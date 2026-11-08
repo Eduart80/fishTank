@@ -1,0 +1,446 @@
+-- Client UI. Shows what the server sends and asks the server to act. It never decides anything.
+-- v1 is UI-only (no 3D tank yet) so we can test whether the market loop is fun.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local actionRemote = Remotes:WaitForChild("Action")
+
+local player = Players.LocalPlayer
+
+-- The default player list sits on top of our Feed / Sell / Slot buttons.
+-- Hidden for now; a proper "Top Traders" board replaces it later.
+pcall(function()
+	game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+end)
+
+-- Theme ---------------------------------------------------------------------
+local C = {
+	bg = Color3.fromRGB(14, 28, 44),
+	panel = Color3.fromRGB(22, 42, 64),
+	row = Color3.fromRGB(30, 56, 84),
+	text = Color3.fromRGB(235, 242, 250),
+	dim = Color3.fromRGB(150, 172, 196),
+	up = Color3.fromRGB(80, 210, 120),
+	down = Color3.fromRGB(240, 90, 90),
+	warn = Color3.fromRGB(255, 190, 70),
+	button = Color3.fromRGB(40, 130, 200),
+	buttonOff = Color3.fromRGB(70, 82, 96),
+	event = Color3.fromRGB(150, 70, 200),
+}
+local FONT = Enum.Font.GothamMedium
+local FONT_BOLD = Enum.Font.GothamBold
+
+-- Helpers -------------------------------------------------------------------
+local function make(className: string, props, children)
+	local inst = Instance.new(className)
+	for key, value in props do
+		if key ~= "Parent" then
+			inst[key] = value
+		end
+	end
+	for _, child in children or {} do
+		child.Parent = inst
+	end
+	if props.Parent then
+		inst.Parent = props.Parent
+	end
+	return inst
+end
+
+local function corner(radius)
+	return make("UICorner", { CornerRadius = UDim.new(0, radius or 8) })
+end
+
+local function label(props)
+	local maxText = props.MaxText or 20
+	props.MaxText = nil -- ours, not an Instance property
+	props.BackgroundTransparency = props.BackgroundTransparency or 1
+	props.Font = props.Font or FONT
+	props.TextColor3 = props.TextColor3 or C.text
+	props.TextScaled = true
+	props.TextXAlignment = props.TextXAlignment or Enum.TextXAlignment.Left
+	return make("TextLabel", props, { make("UITextSizeConstraint", { MaxTextSize = maxText }) })
+end
+
+local function button(props)
+	props.Font = FONT_BOLD
+	props.TextColor3 = C.text
+	props.TextScaled = true
+	props.AutoButtonColor = true
+	props.BackgroundColor3 = props.BackgroundColor3 or C.button
+	return make("TextButton", props, { corner(6), make("UITextSizeConstraint", { MaxTextSize = 16 }), make("UIPadding", { PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4) }) })
+end
+
+local function fmt(n: number): string
+	local s = tostring(math.floor(n + 0.5))
+	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (out:gsub("^,", ""))
+end
+
+local function fmtTime(seconds: number): string
+	seconds = math.max(0, math.floor(seconds))
+	if seconds >= 3600 then
+		return ("%dh %dm"):format(seconds // 3600, (seconds % 3600) // 60)
+	elseif seconds >= 60 then
+		return ("%dm %ds"):format(seconds // 60, seconds % 60)
+	end
+	return ("%ds"):format(seconds)
+end
+
+-- Layout --------------------------------------------------------------------
+local gui = make("ScreenGui", { Name = "FishMarketUI", ResetOnSpawn = false, Parent = player:WaitForChild("PlayerGui") })
+
+local topBar = make("Frame", { BackgroundColor3 = C.panel, Position = UDim2.new(0.02, 0, 0, 8), Size = UDim2.new(0.96, 0, 0, 44), Parent = gui }, { corner() })
+local coinsLabel = label({ Font = FONT_BOLD, Text = "0 coins", Position = UDim2.new(0, 12, 0, 6), Size = UDim2.new(0.21, -12, 1, -12), MaxText = 24, Parent = topBar })
+local foodLabel = label({ Text = "", Position = UDim2.new(0.22, 0, 0, 6), Size = UDim2.new(0.28, 0, 1, -12), Parent = topBar })
+local feedButton = button({ Text = "Feed", Position = UDim2.new(0.5, 0, 0, 6), Size = UDim2.new(0.16, -6, 1, -12), Parent = topBar })
+local marketToggle = button({ Text = "Market", BackgroundColor3 = C.event, Position = UDim2.new(0.66, 0, 0, 6), Size = UDim2.new(0.16, -6, 1, -12), Parent = topBar })
+local tankToggle = button({ Text = "My Tank", BackgroundColor3 = C.event, Position = UDim2.new(0.82, 0, 0, 6), Size = UDim2.new(0.18, -6, 1, -12), Parent = topBar })
+
+local eventBar = make("Frame", { BackgroundColor3 = C.event, Position = UDim2.new(0.02, 0, 0, 56), Size = UDim2.new(0.96, 0, 0, 30), Visible = false, Parent = gui }, { corner() })
+local eventLabel = label({ Font = FONT_BOLD, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 8, 0, 4), Size = UDim2.new(1, -16, 1, -8), Parent = eventBar })
+
+local function panel(x: number, title: string)
+	local frame = make("Frame", { BackgroundColor3 = C.panel, Position = UDim2.new(x, 0, 0, 92), Size = UDim2.new(0.47, 0, 1, -104), Parent = gui }, { corner() })
+	local titleLabel = label({ Font = FONT_BOLD, Text = title, Position = UDim2.new(0, 12, 0, 6), Size = UDim2.new(0.5, 0, 0, 28), MaxText = 22, Parent = frame })
+	local list = make("ScrollingFrame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 8, 0, 42),
+		Size = UDim2.new(1, -16, 1, -50),
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 6,
+		Parent = frame,
+	}, { make("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }) })
+	return frame, titleLabel, list
+end
+
+local marketFrame, _, marketList = panel(0.02, "Fish Market")
+local tankFrame, tankTitle, tankList = panel(0.51, "Your Tank")
+-- panels are pop-ups now so the 3D world stays visible
+marketFrame.Visible = false
+tankFrame.Visible = false
+local sellAllButton = button({ Text = "Sell all adults", Position = UDim2.new(0.5, 0, 0, 6), Size = UDim2.new(0.27, -4, 0, 28), Parent = tankFrame })
+local slotButton = button({ Text = "+ Slot", Position = UDim2.new(0.77, 0, 0, 6), Size = UDim2.new(0.23, -8, 0, 28), Parent = tankFrame })
+
+local toast = label({
+	Font = FONT_BOLD,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	BackgroundTransparency = 0.15,
+	BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -16),
+	Size = UDim2.new(0.6, 0, 0, 36),
+	Visible = false,
+	Parent = gui,
+})
+corner(8).Parent = toast
+
+local toastToken = 0
+local function showToast(text: string)
+	toastToken += 1
+	local token = toastToken
+	toast.Text = text
+	toast.TextTransparency = 0
+	toast.BackgroundTransparency = 0.15
+	toast.Visible = true
+	task.delay(3.5, function()
+		if token ~= toastToken then
+			return
+		end
+		local info = TweenInfo.new(0.5)
+		TweenService:Create(toast, info, { TextTransparency = 1, BackgroundTransparency = 1 }):Play()
+		task.wait(0.5)
+		if token == toastToken then
+			toast.Visible = false
+		end
+	end)
+end
+
+local busy = false
+local function act(action: string, arg)
+	if busy then
+		return
+	end
+	busy = true
+	local ok, result = pcall(actionRemote.InvokeServer, actionRemote, action, arg)
+	busy = false
+	if not ok then
+		showToast("Connection problem, try again")
+	elseif result and result.msg then
+		showToast(result.msg)
+	end
+end
+
+feedButton.Activated:Connect(function()
+	act("feed")
+end)
+sellAllButton.Activated:Connect(function()
+	act("sellAllAdults")
+end)
+slotButton.Activated:Connect(function()
+	act("buySlot")
+end)
+marketToggle.Activated:Connect(function()
+	marketFrame.Visible = not marketFrame.Visible
+end)
+tankToggle.Activated:Connect(function()
+	tankFrame.Visible = not tankFrame.Visible
+end)
+
+-- Press E at the market counter or at a tank
+ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	if prompt.Name == "MarketPrompt" then
+		marketFrame.Visible = true
+	elseif prompt.Name == "TankPrompt" then
+		local plot = prompt:FindFirstAncestorWhichIsA("Model")
+		local ownerId = plot and plot:GetAttribute("OwnerId")
+		if ownerId == player.UserId then
+			tankFrame.Visible = true
+		elseif ownerId and ownerId ~= 0 then
+			showToast("This is " .. prompt.ObjectText .. "'s tank. Nice fish!")
+		else
+			showToast("This tank is empty")
+		end
+	end
+end)
+
+-- State from server ---------------------------------------------------------
+local tank = nil -- latest State payload
+local tankAt = 0 -- os.clock() when it arrived
+local market = nil
+local marketAt = 0
+
+local function serverNow(): number
+	if tank then
+		return tank.now + (os.clock() - tankAt)
+	elseif market then
+		return market.now + (os.clock() - marketAt)
+	end
+	return os.time()
+end
+
+-- Market rows ---------------------------------------------------------------
+local BARS = 30
+local marketRows = {}
+
+for i, species in Config.Species do
+	local row = make("Frame", { BackgroundColor3 = C.row, Size = UDim2.new(1, -6, 0, 74), LayoutOrder = i, Parent = marketList }, { corner(6) })
+	make("Frame", { BackgroundColor3 = species.color, Size = UDim2.new(0, 6, 1, 0), Parent = row }, { corner(3) })
+	label({ Font = FONT_BOLD, Text = species.name, Position = UDim2.new(0, 14, 0, 4), Size = UDim2.new(0.3, 0, 0, 22), Parent = row })
+	local price = label({ Font = FONT_BOLD, Text = "-", Position = UDim2.new(0, 14, 0, 30), Size = UDim2.new(0.18, 0, 0, 24), MaxText = 22, Parent = row })
+	local change = label({ Text = "", Position = UDim2.new(0.2, 0, 0, 32), Size = UDim2.new(0.14, 0, 0, 20), MaxText = 16, Parent = row })
+	-- eggs bought recently that are still growing = future supply of this fish
+	local growing = label({ Text = "", TextColor3 = C.dim, Position = UDim2.new(0, 14, 0, 54), Size = UDim2.new(0.34, 0, 0, 16), MaxText = 13, Parent = row })
+	local chart = make("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0.36, 0, 0, 6), Size = UDim2.new(0.38, 0, 1, -12), Parent = row })
+	local bars = {}
+	for b = 1, BARS do
+		bars[b] = make("Frame", { BorderSizePixel = 0, BackgroundColor3 = C.dim, Position = UDim2.new((b - 1) / BARS, 0, 1, 0), Size = UDim2.new(1 / BARS, -1, 0, 0), AnchorPoint = Vector2.new(0, 1), Parent = chart })
+	end
+	local buy = button({ Text = ("Egg %d"):format(species.eggPrice), Position = UDim2.new(0.76, 0, 0, 10), Size = UDim2.new(0.24, -8, 1, -20), Parent = row })
+	buy.Activated:Connect(function()
+		act("buyEgg", species.id)
+	end)
+	marketRows[species.id] = { price = price, change = change, bars = bars, buy = buy, growing = growing }
+end
+
+local EVENT_BANNER_SECONDS = 5
+local eventSeenKey = nil
+local eventHideAt = 0
+
+local function renderMarket()
+	if not market then
+		return
+	end
+	for _, species in Config.Species do
+		local row = marketRows[species.id]
+		local current = market.prices[species.id]
+		local hist = market.history[species.id] or {}
+		row.price.Text = fmt(current)
+		local growingCount = (market.growing and market.growing[species.id]) or 0
+		row.growing.Text = if growingCount > 0 then ("%s growing worldwide"):format(fmt(growingCount)) else "none growing"
+
+		-- locked species show what you need to earn
+		local earned = if tank and tank.stats then tank.stats.earned else 0
+		local need = species.unlockEarned or 0
+		if earned < need then
+			row.buy.Text = ("Sell %s/%s"):format(fmt(earned), fmt(need))
+			row.buy.BackgroundColor3 = C.buttonOff
+		else
+			local eggPrice = (market.eggPrices and market.eggPrices[species.id]) or species.eggPrice
+			row.buy.Text = ("Egg %s%s"):format(fmt(eggPrice), if eggPrice > species.eggPrice then " ▲" else "")
+			row.buy.BackgroundColor3 = C.button
+		end
+
+		local first = hist[1] or current
+		local pct = (current - first) / first * 100
+		row.change.Text = ("%s%.1f%%"):format(if pct >= 0 then "+" else "", pct)
+		local color = if pct >= 0 then C.up else C.down
+		row.change.TextColor3 = color
+
+		-- last BARS points, scaled min..max
+		local startIndex = math.max(1, #hist - BARS + 1)
+		local lo, hi = math.huge, -math.huge
+		for i = startIndex, #hist do
+			lo = math.min(lo, hist[i])
+			hi = math.max(hi, hist[i])
+		end
+		local span = math.max(hi - lo, current * 0.02)
+		for b = 1, BARS do
+			local value = hist[startIndex + b - 1]
+			local bar = row.bars[b]
+			if value then
+				bar.Visible = true
+				bar.Size = UDim2.new(1 / BARS, -1, 0.15 + 0.85 * (value - lo) / span, 0)
+				bar.BackgroundColor3 = color
+			else
+				bar.Visible = false
+			end
+		end
+	end
+
+	-- event banner: show for EVENT_BANNER_SECONDS when a new event starts, then hide
+	-- (the big market board in the plaza keeps showing it)
+	local event = market.event
+	if event and event.endsAt > serverNow() then
+		local key = event.title .. event.endsAt
+		if key ~= eventSeenKey then
+			eventSeenKey = key
+			eventHideAt = os.clock() + EVENT_BANNER_SECONDS
+		end
+		eventBar.Visible = os.clock() < eventHideAt
+		eventLabel.Text = ("%s: %s (%s left)"):format(event.title, event.text, fmtTime(event.endsAt - serverNow()))
+	else
+		eventBar.Visible = false
+	end
+end
+
+-- Tank rows -----------------------------------------------------------------
+local fishRows = {} -- [uid] = row parts
+
+local function makeFishRow(fish)
+	local species = Config.ById[fish.species]
+	local color = if species then species.color else C.dim
+	local row = make("Frame", { BackgroundColor3 = C.row, Size = UDim2.new(1, -6, 0, 54), Parent = tankList }, { corner(6) })
+	make("Frame", { BackgroundColor3 = color, Size = UDim2.new(0, 6, 1, 0), Parent = row }, { corner(3) })
+	local name = label({ Font = FONT_BOLD, Text = if species then species.name else fish.species, Position = UDim2.new(0, 14, 0, 4), Size = UDim2.new(0.32, 0, 0, 20), Parent = row })
+	local barBack = make("Frame", { BackgroundColor3 = C.bg, Position = UDim2.new(0, 14, 0, 30), Size = UDim2.new(0.32, 0, 0, 14), Parent = row }, { corner(4) })
+	local barFill = make("Frame", { BackgroundColor3 = color, Size = UDim2.new(0, 0, 1, 0), Parent = barBack }, { corner(4) })
+	local info = label({ Text = "", Position = UDim2.new(0.38, 0, 0, 4), Size = UDim2.new(0.36, 0, 0, 22), MaxText = 16, Parent = row })
+	local status = label({ Text = "", Position = UDim2.new(0.38, 0, 0, 28), Size = UDim2.new(0.36, 0, 0, 20), MaxText = 15, Parent = row })
+	local sell = button({ Text = "Sell", Position = UDim2.new(0.76, 0, 0, 10), Size = UDim2.new(0.24, -8, 1, -20), Parent = row })
+	sell.Activated:Connect(function()
+		act("sell", { fish.uid })
+	end)
+	return { frame = row, name = name, barFill = barFill, info = info, status = status, sell = sell }
+end
+
+local function renderTank()
+	if not tank then
+		return
+	end
+	local now = serverNow()
+	coinsLabel.Text = fmt(tank.coins) .. " coins"
+
+	local fedLeft = tank.fedUntil - now
+	if #tank.fish == 0 then
+		foodLabel.Text = "Buy an egg to start"
+		foodLabel.TextColor3 = C.dim
+	elseif fedLeft > 0 then
+		foodLabel.Text = "Food: " .. fmtTime(fedLeft)
+		foodLabel.TextColor3 = if fedLeft < Config.real(3600) then C.warn else C.text
+	else
+		foodLabel.Text = "HUNGRY! Fish stopped growing"
+		foodLabel.TextColor3 = C.down
+	end
+	feedButton.Text = if #tank.fish == 0 then "Feed" elseif tank.feedCost > 0 then ("Feed (%s)"):format(fmt(tank.feedCost)) else "Food full"
+	feedButton.BackgroundColor3 = if tank.feedCost > 0 and #tank.fish > 0 then C.button else C.buttonOff
+
+	tankTitle.Text = ("Your Tank %d/%d"):format(#tank.fish, tank.slots)
+	slotButton.Text = if tank.slots >= tank.maxSlots then "Max" else ("+Slot %s"):format(fmt(tank.slotCost))
+
+	local seen = {}
+	for order, fish in tank.fish do
+		seen[fish.uid] = true
+		local row = fishRows[fish.uid] or makeFishRow(fish)
+		fishRows[fish.uid] = row
+		row.frame.LayoutOrder = order
+
+		local species = Config.ById[fish.species]
+		-- predict growth since the last server update (server stays the authority)
+		local age = fish.age
+		if species then
+			local growEnd = math.min(now, tank.fedUntil)
+			if growEnd > tank.now then
+				age = math.min(age + (growEnd - tank.now) * Config.TIME_SCALE / species.growSeconds, Config.MAX_AGE)
+			end
+		end
+
+		if age < 1 then
+			row.barFill.Size = UDim2.new(age, 0, 1, 0)
+			row.info.Text = ("Growing %d%%"):format(math.floor(age * 100))
+			row.info.TextColor3 = C.dim
+			row.sell.BackgroundColor3 = C.buttonOff
+		else
+			local size = Config.sizeFromAge(age)
+			row.barFill.Size = UDim2.new((age - 1) / Config.EXTRA_GROWTH_PERIODS, 0, 1, 0)
+			local price = market and species and market.prices[fish.species]
+			if price then
+				row.info.Text = ("Size %.2fx  ~%s"):format(size, fmt(price * size * (1 - Config.MARKET_FEE)))
+			else
+				row.info.Text = ("Size %.2fx"):format(size)
+			end
+			row.info.TextColor3 = C.text
+			row.sell.BackgroundColor3 = C.button
+		end
+
+		if fish.starveAt and now >= tank.fedUntil then
+			row.status.Text = "Starving! Dies in " .. fmtTime(fish.starveAt - now)
+			row.status.TextColor3 = C.down
+		elseif age >= Config.MAX_AGE then
+			row.status.Text = "Fully grown"
+			row.status.TextColor3 = C.up
+		else
+			row.status.Text = if age >= 1 then "Still growing bigger" else ""
+			row.status.TextColor3 = C.dim
+		end
+	end
+	for uid, row in fishRows do
+		if not seen[uid] then
+			row.frame:Destroy()
+			fishRows[uid] = nil
+		end
+	end
+end
+
+Remotes:WaitForChild("State").OnClientEvent:Connect(function(payload)
+	tank = payload
+	tankAt = os.clock()
+	renderTank()
+end)
+
+Remotes:WaitForChild("Market").OnClientEvent:Connect(function(payload)
+	market = payload
+	marketAt = os.clock()
+	renderMarket()
+	renderTank()
+end)
+
+Remotes:WaitForChild("Notify").OnClientEvent:Connect(function(text)
+	showToast(text)
+end)
+
+require(script.Parent:WaitForChild("FishRenderer")).start()
+
+-- smooth countdowns between server updates
+while true do
+	task.wait(0.5)
+	renderTank()
+	renderMarket()
+end
