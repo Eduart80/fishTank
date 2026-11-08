@@ -437,6 +437,7 @@ Remotes:WaitForChild("Notify").OnClientEvent:Connect(function(text)
 end)
 
 require(script.Parent:WaitForChild("FishRenderer")).start()
+require(script.Parent:WaitForChild("Seagulls")).start()
 
 -- smooth countdowns between server updates
 while true do

@@ -47,6 +47,10 @@ Config.Species = {
 -- Must stay >= guppy egg price at max demand (10 * EGG_MAX_MULT 2 = 20).
 Config.RESCUE_COINS = 20
 
+-- Seagull squawk: paste a Roblox audio id from the Studio Toolbox, e.g. "rbxassetid://1234567".
+-- Empty = silent gulls.
+Config.SEAGULL_SOUND_ID = "rbxassetid://9118858002"
+
 -- 3D look: scale = body size multiplier, speed = studs/sec, tail/stripe colors (stripe optional)
 local VISUALS = {
 	guppy = { scale = 0.8, speed = 6, tail = Color3.fromRGB(255, 80, 170) },

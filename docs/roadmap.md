@@ -32,6 +32,27 @@ Rule for every danger: **warning + counter + limit**. A loss must be one the pla
 
 All four change the economy → re-run the progression sim before shipping.
 
+### Bait Shack 🏪 (after the fishing minigame works)
+
+Hut at the pier entrance. Main job: a **coin sink** (keeps coins leaving the game so prices still matter).
+
+| Item | Type | Effect |
+|---|---|---|
+| Rods: Bamboo → Fiberglass → Carbon → Legendary | One-time upgrade | Cast farther → reach deeper zones |
+| Fishing line | Upgrade | Big fish don't snap the line and escape |
+| Hooks: small / big / golden | Upgrade | Choose your target: big hook lands big fish, misses small ones |
+| Worms 🪱 | Consumable, cheap | Basic bait → small fish |
+| Shrimp / squid bait | Consumable | Attracts salmon, tuna |
+| Glowing lure | Consumable, rare | Night fishing, rare-variant chance |
+| Tank food types: flakes / pellets / premium | Consumable | Ties to food sweet spot: cheap · growth bonus · rare-variant chance |
+
+**Distance zones:** buoys in the sea mark rings 🟢 near (rod 1) → 🟡 mid (rod 2) → 🔴 far (rod 3) → 🟣 deep (Legendary). Players *see* the better water before they can reach it.
+
+Rules:
+- Useful gear = **coins only**. Robux = cosmetic rods only (same stats).
+- Bait is used up (ongoing sink).
+- Caught fish are small → the tank stays the main loop.
+
 ## World stages (long term)
 
 | World | Boss | Twist |

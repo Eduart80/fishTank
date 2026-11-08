@@ -210,9 +210,134 @@ local function buildMarket(parent: Instance)
 	model.Parent = parent
 end
 
+-- Sea + island (terrain) ---------------------------------------------------
+local SEA_LEVEL = -1.5 -- water surface, a small step below the plaza so you can climb out
+local SEA_DEPTH = 20
+local SEA_SIZE = 1200
+local ISLAND_SIZE = 230 -- plaza is 190 → a sand beach strip around it
+
+local function buildSea()
+	local baseplate = workspace:FindFirstChild("Baseplate")
+	if baseplate then
+		baseplate:Destroy() -- the grey Studio floor would cover the sea
+	end
+	local terrain = workspace.Terrain
+	terrain.WaterColor = Color3.fromRGB(25, 115, 165)
+	terrain.WaterTransparency = 0.6
+	terrain.WaterReflectance = 0.5
+	terrain.WaterWaveSize = 0.15
+	terrain.WaterWaveSpeed = 8
+
+	local bottom = SEA_LEVEL - SEA_DEPTH
+	terrain:FillBlock(CFrame.new(0, SEA_LEVEL - SEA_DEPTH / 2, 0), Vector3.new(SEA_SIZE, SEA_DEPTH, SEA_SIZE), Enum.Material.Water)
+	terrain:FillBlock(CFrame.new(0, bottom - 4, 0), Vector3.new(SEA_SIZE, 8, SEA_SIZE), Enum.Material.Sand) -- sea floor
+	local islandTop = FLOOR_Y - 0.4
+	terrain:FillBlock(CFrame.new(0, (islandTop + bottom) / 2, 0), Vector3.new(ISLAND_SIZE, islandTop - bottom, ISLAND_SIZE), Enum.Material.Sand)
+end
+
+-- Fishing pier (visual only for now; fishing itself is a phase 3 feature) ----
+local PIER_START_Z = 92 -- plaza edge is z = 95; the gap between tanks 1 and 8 faces +Z
+local PIER_LEN = 70
+local PIER_W = 8
+local PLATFORM = 26
+
+local function buildPier(parent: Instance)
+	local model = Instance.new("Model")
+	model.Name = "FishingPier"
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+
+	local deckTop = FLOOR_Y + 0.5
+	local deckY = deckTop - 0.5
+	local endZ = PIER_START_Z + PIER_LEN
+	local platZ = endZ + PLATFORM / 2 - 1
+	local postColor = Color3.fromRGB(80, 56, 36)
+	local wood = { Material = Enum.Material.WoodPlanks, Color = COLORS.wood }
+
+	local function woodPart(name, size, cf, color)
+		return part({ Name = name, Size = size, CFrame = cf, Material = wood.Material, Color = color or wood.Color, Parent = model })
+	end
+
+	woodPart("Walkway", Vector3.new(PIER_W, 1, PIER_LEN), CFrame.new(0, deckY, PIER_START_Z + PIER_LEN / 2))
+	woodPart("Platform", Vector3.new(PLATFORM, 1, PLATFORM), CFrame.new(0, deckY, platZ))
+
+	-- posts down into the sea
+	local postH = deckY - (SEA_LEVEL - SEA_DEPTH)
+	local function post(x, z)
+		woodPart("Post", Vector3.new(1.2, postH, 1.2), CFrame.new(x, deckY - postH / 2, z), postColor)
+	end
+	for z = PIER_START_Z + 15, endZ, 10 do
+		post(-PIER_W / 2 + 0.6, z)
+		post(PIER_W / 2 - 0.6, z)
+	end
+	local half = PLATFORM / 2 - 0.6
+	for _, x in { -half, half } do
+		for _, z in { platZ - half, platZ + half } do
+			post(x, z)
+		end
+	end
+
+	-- railings: walkway sides (over the water) + platform left/right/far side
+	local railH = 3
+	local function rail(from: Vector3, to: Vector3)
+		local mid = (from + to) / 2
+		local len = (to - from).Magnitude
+		woodPart("Rail", Vector3.new(0.4, 0.4, len), CFrame.lookAt(mid + Vector3.new(0, railH, 0), to + Vector3.new(0, railH, 0)), postColor)
+		local steps = math.max(1, math.floor(len / 5))
+		for s = 0, steps do
+			local p = from:Lerp(to, s / steps)
+			woodPart("Baluster", Vector3.new(0.4, railH, 0.4), CFrame.new(p.X, deckTop + railH / 2, p.Z), postColor)
+		end
+	end
+	local railStart = PIER_START_Z + 15
+	for _, x in { -PIER_W / 2 + 0.2, PIER_W / 2 - 0.2 } do
+		rail(Vector3.new(x, deckTop, railStart), Vector3.new(x, deckTop, endZ))
+	end
+	local px, nearZ, farZ = PLATFORM / 2 - 0.2, endZ, platZ + PLATFORM / 2 - 0.2
+	rail(Vector3.new(-px, deckTop, nearZ), Vector3.new(-px, deckTop, farZ))
+	rail(Vector3.new(px, deckTop, nearZ), Vector3.new(px, deckTop, farZ))
+	rail(Vector3.new(-px, deckTop, farZ), Vector3.new(px, deckTop, farZ))
+
+	-- props: crates, barrels, lamps
+	part({ Name = "Crate", Size = Vector3.new(3, 3, 3), CFrame = CFrame.new(-9, deckTop + 1.5, endZ + 4) * CFrame.Angles(0, 0.3, 0), Material = Enum.Material.WoodPlanks, Color = Color3.fromRGB(150, 110, 70), Parent = model })
+	part({ Name = "Crate", Size = Vector3.new(2, 2, 2), CFrame = CFrame.new(-8.5, deckTop + 4, endZ + 4) * CFrame.Angles(0, -0.4, 0), Material = Enum.Material.WoodPlanks, Color = Color3.fromRGB(150, 110, 70), Parent = model })
+	for _, pos in { Vector3.new(9, 0, endZ + 3), Vector3.new(10, 0, endZ + 6.5) } do
+		part({ Name = "Barrel", Shape = Enum.PartType.Cylinder, Size = Vector3.new(3.5, 2.6, 2.6), CFrame = CFrame.new(pos.X, deckTop + 1.75, pos.Z) * CFrame.Angles(0, 0, math.pi / 2), Material = Enum.Material.Wood, Color = Color3.fromRGB(120, 70, 40), Parent = model })
+	end
+	for _, x in { -px, px } do
+		local lampZ = farZ
+		woodPart("LampPost", Vector3.new(0.6, 8, 0.6), CFrame.new(x, deckTop + 4, lampZ), postColor)
+		local bulb = part({ Name = "Lamp", Shape = Enum.PartType.Ball, Size = Vector3.new(1.4, 1.4, 1.4), CFrame = CFrame.new(x, deckTop + 8.5, lampZ), Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 220, 150), CanCollide = false, Parent = model })
+		local light = Instance.new("PointLight")
+		light.Range = 18
+		light.Brightness = 1.5
+		light.Color = bulb.Color
+		light.Parent = bulb
+	end
+
+	-- entrance arch with sign, facing the plaza (-Z)
+	local archH = 12
+	for _, x in { -(PIER_W / 2 + 0.6), PIER_W / 2 + 0.6 } do
+		woodPart("ArchPost", Vector3.new(1, archH, 1), CFrame.new(x, deckTop + archH / 2, PIER_START_Z), postColor)
+	end
+	local sign = woodPart("Sign", Vector3.new(PIER_W + 4, 3.5, 0.6), CFrame.new(0, deckTop + archH - 1.5, PIER_START_Z - 0.2))
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 30
+	gui.LightInfluence = 0
+	gui.Parent = sign
+	textLabel({ Text = "FISHING PIER", Position = UDim2.fromScale(0.05, 0.08), Size = UDim2.fromScale(0.9, 0.55), Parent = gui })
+	textLabel({ Text = "coming soon", TextColor3 = Color3.fromRGB(255, 220, 150), Position = UDim2.fromScale(0.2, 0.62), Size = UDim2.fromScale(0.6, 0.3), Parent = gui })
+
+	model.Parent = parent
+end
+
 function WorldService.start()
 	local world = Instance.new("Folder")
 	world.Name = "FishWorld"
+
+	buildSea()
+	buildPier(world)
 
 	part({ Name = "Plaza", Size = Vector3.new(190, 0.4, 190), CFrame = CFrame.new(0, FLOOR_Y - 0.2, 0), Material = Enum.Material.Concrete, Color = COLORS.floor, Parent = world })
 
