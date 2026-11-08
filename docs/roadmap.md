@@ -15,7 +15,7 @@ See also: `creatures.md` (38 creatures, 5 worlds) · `decorations.md` (tank deco
 | 4 | Social: Top Traders board, tank likes, Most Beautiful Tank, biggest-fish record | ⬜ |
 | 5 | Retention: daily egg/streak, "while you were away", event schedule/rumors, notifications | ⬜ |
 | 6 | Polish: sounds, tutorial, mobile check, icon/thumbnail, real 3D models | ⬜ |
-| 7 | Monetization: Auto-Feeder, +slots, Market Insider, grow boost, Robux cosmetics | ⬜ |
+| 7 | Monetization (see order below) | ⬜ |
 | 8 | Launch: private beta → public, analytics, weekly updates | ⬜ |
 | 9 | Player-to-player trading / auction house | ⬜ later |
 
@@ -52,6 +52,33 @@ Rules:
 - Useful gear = **coins only**. Robux = cosmetic rods only (same stats).
 - Bait is used up (ongoing sink).
 - Caught fish are small → the tank stays the main loop.
+
+## Monetization (phase 7) — sell time & safety, not market power
+
+| Rank | Item | Why people pay |
+|---|---|---|
+| 1 | **Auto-Feeder** (Game Pass) | Fear of losing fish — strongest reason in this game |
+| 2 | **Grow boost 2×/1h** (Dev Product), **+Tank slots** (capped) | Impatience |
+| 3 | **Premium Payouts** | Free — paid by Roblox for daily returning Premium players |
+| 4 | **Starter pack** (once, small) | First purchase; payers pay again |
+| 5 | Cosmetics — only **visible/social** ones (tank themes, title above head, Most Beautiful Tank) | Bonus income only |
+
+Never: big coin packs, gear that catches better fish (paid players would wreck the shared market).
+
+## Will players come back? — measure, don't guess
+
+Funnel events (AnalyticsService) to see **where** players quit:
+joined → bought first egg → first fish grew → first sale → first unlock → came back next day.
+
+| Check | Target | If below |
+|---|---|---|
+| First egg bought in 2 min | 90% | Spawn/UI confusing → tutorial |
+| First sale in 15 min | 70% | Start too slow → faster guppy |
+| Day-1 return (D1) | 20%+ | Fix the first session before any new feature |
+| Day-7 return (D7) | 5%+ | Need stronger daily reasons (phase 5) |
+| Avg session | 15 min+ | Too little to do while waiting (→ fishing) |
+
+Benchmarks are rough; Creator Dashboard shows real D1/D7 + session length once live.
 
 ## World stages (long term)
 

@@ -10,6 +10,7 @@ local DataService = require(Services.DataService)
 local MarketService = require(Services.MarketService)
 local TankService = require(Services.TankService)
 local WorldService = require(Services.WorldService)
+local AnalyticsTracker = require(Services.AnalyticsTracker)
 
 local TICK = 5
 local ACTION_COOLDOWN = 0.15
@@ -61,10 +62,14 @@ local function settleAndNotify(player: Player, data, now: number)
 			table.insert(names, if species then species.name else fish.species)
 		end
 		notifyRemote:FireClient(player, ("%d fish starved: %s. Keep the food topped up!"):format(#died, table.concat(names, ", ")))
+		AnalyticsTracker.custom(player, "FishStarved", #died)
 	end
 	if TankService.rescueIfBroke(data, now) then
 		notifyRemote:FireClient(player, ("The harbor gave you %d coins to start again. Keep some coins for food!"):format(Config.RESCUE_COINS))
+		AnalyticsTracker.custom(player, "RescueGiven")
+		AnalyticsTracker.economy(player, data, "rescue", Config.RESCUE_COINS)
 	end
+	AnalyticsTracker.check(player, data)
 end
 
 -- Actions -----------------------------------------------------------------
@@ -116,7 +121,12 @@ actionRemote.OnServerInvoke = function(player: Player, action, arg)
 
 	local now = os.time()
 	settleAndNotify(player, data, now)
+	local coinsBefore = data.coins
 	local ok, msg = handler(data, now, arg)
+	if ok then
+		AnalyticsTracker.economy(player, data, action, data.coins - coinsBefore, if action == "buyEgg" then arg else nil)
+		AnalyticsTracker.check(player, data)
+	end
 	pushState(player, data, now)
 	return { ok = ok, msg = msg }
 end

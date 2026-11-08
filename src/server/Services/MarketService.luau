@@ -167,6 +167,26 @@ function MarketService.snapshot(now: number)
 	}
 end
 
+-- Studio test runner only: copy / put back all market pressure so test trades leave no trace.
+function MarketService._saveForTests()
+	local copy = {}
+	for id, channels in state do
+		copy[id] = {}
+		for channel, st in channels do
+			copy[id][channel] = table.clone(st)
+		end
+	end
+	return copy
+end
+
+function MarketService._restoreForTests(copy)
+	for id, channels in copy do
+		for channel, st in channels do
+			state[id][channel] = table.clone(st)
+		end
+	end
+end
+
 function MarketService.start()
 	local now = os.time()
 	for _, species in Config.Species do
