@@ -188,7 +188,10 @@ function BoatService.start(opts)
 					table.insert(free, i)
 				end
 			end
-			local newOffer = if #free > 0 then makeOffer(opts.getOnlineData(), os.time()) else nil
+			-- "Storm at Sea" market event says no boats are out: none sail in while it lasts
+			local event = MarketService.currentEvent(os.time())
+			local storm = event ~= nil and event.def.id == "storm"
+			local newOffer = if #free > 0 and not storm then makeOffer(opts.getOnlineData(), os.time()) else nil
 			if newOffer then
 				local i = free[rng:NextInteger(1, #free)]
 				busy[i], last = true, i
