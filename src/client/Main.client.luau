@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
@@ -251,16 +252,36 @@ end)
 local SMALL_SCREEN_WIDTH = 900
 local allPanels = { marketFrame, shopFrame, tankFrame }
 
+-- Phone = touch screen that is wide (sideways phone ~2:1; tablets are ~4:3) or just short.
+-- Pixel width alone fails: high-res phones (Samsung) report PC-sized viewports.
+local function isPhone(): boolean
+	local camera = workspace.CurrentCamera
+	if not camera then return false end
+	local v = camera.ViewportSize
+	local touchOnly = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+	return v.Y < 500 or (touchOnly and v.X / math.max(v.Y, 1) >= 1.7)
+end
+
 local function isSmall(): boolean
 	local camera = workspace.CurrentCamera
-	return camera ~= nil and camera.ViewportSize.X < SMALL_SCREEN_WIDTH
+	return camera ~= nil and (camera.ViewportSize.X < SMALL_SCREEN_WIDTH or isPhone())
 end
 
 local function layoutPanels()
 	local small = isSmall()
 	local viewport = if workspace.CurrentCamera then workspace.CurrentCamera.ViewportSize else Vector2.new(1280, 800)
 	-- phone sideways = short screen: shrink the icon column a lot; small/tablet a bit
-	iconColumnScale.Scale = if viewport.Y < 500 then 0.55 elseif small then 0.75 else 1
+	local phone = isPhone()
+	-- phone: 42px circles = same size as the Roblox menu button in the top bar
+	iconColumnScale.Scale = if phone then 42 / 68 elseif small then 0.75 else 1
+	-- phone: pin icons to the top-left under the Roblox menu, clear of the thumbstick (bottom-left)
+	if phone then
+		iconColumn.AnchorPoint = Vector2.new(0, 0)
+		iconColumn.Position = UDim2.new(0, 10, 0, 6) -- gui respects the top-bar inset, so 6 = just under it
+	else
+		iconColumn.AnchorPoint = Vector2.new(0, 0.5)
+		iconColumn.Position = UDim2.new(0, 12, 0.5, 0)
+	end
 	local left = math.floor(12 + 68 * iconColumnScale.Scale + 10) -- windows start right of the icons
 	local shopHeight = 64 + #Config.ROBUX * 90
 	if small then
