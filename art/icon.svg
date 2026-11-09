@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Fish Tank Market game icon (original artwork). Edit and re-render with art/render-icon.js -->
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34c6ee"/>
+      <stop offset="0.55" stop-color="#1477c9"/>
+      <stop offset="1" stop-color="#0a3a8a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.45" cy="0.55" r="0.55">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb347"/>
+      <stop offset="1" stop-color="#ff6a13"/>
+    </linearGradient>
+    <radialGradient id="coin" cx="0.38" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#fff3a6"/>
+      <stop offset="0.5" stop-color="#ffd23f"/>
+      <stop offset="1" stop-color="#e09a12"/>
+    </radialGradient>
+    <clipPath id="bodyClip">
+      <ellipse cx="0" cy="0" rx="138" ry="92"/>
+    </clipPath>
+  </defs>
+
+  <!-- water -->
+  <rect width="512" height="512" fill="url(#sea)"/>
+  <g fill="#ffffff" opacity="0.09">
+    <polygon points="70,0 130,0 40,512 -20,512"/>
+    <polygon points="230,0 270,0 210,512 160,512"/>
+    <polygon points="380,0 450,0 400,512 330,512"/>
+  </g>
+  <rect width="512" height="512" fill="url(#glow)"/>
+
+  <!-- sand -->
+  <path d="M0 440 Q 90 410 180 432 T 360 428 T 512 420 L512 512 L0 512 Z" fill="#f2d48f"/>
+  <path d="M0 462 Q 120 440 250 458 T 512 450 L512 512 L0 512 Z" fill="#e6bf6c"/>
+
+  <!-- rising market line -->
+  <polyline points="34,392 128,318 196,350 286,238 364,268 452,150" fill="none" stroke="#0b4d27" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="34,392 128,318 196,350 286,238 364,268 452,150" fill="none" stroke="#3ee37e" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- arrow head: line direction is -53deg, the triangle points up (-90deg) so turn it +37deg -->
+  <g transform="translate(452 150) rotate(37)">
+    <polygon points="0,-62 40,6 -40,6" fill="#3ee37e" stroke="#0b4d27" stroke-width="8" stroke-linejoin="round"/>
+  </g>
+
+  <!-- fish -->
+  <g transform="translate(236 318) rotate(-10)">
+    <!-- tail -->
+    <path d="M-120 0 L-205 -72 Q -188 0 -205 72 Z" fill="#ff7a1a" stroke="#4a1d00" stroke-width="10" stroke-linejoin="round"/>
+    <!-- top + bottom fins -->
+    <path d="M-40 -84 Q 0 -150 70 -86 Z" fill="#ff7a1a" stroke="#4a1d00" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M-10 84 Q 20 130 60 82 Z" fill="#ff7a1a" stroke="#4a1d00" stroke-width="10" stroke-linejoin="round"/>
+    <!-- body -->
+    <ellipse cx="0" cy="0" rx="138" ry="92" fill="url(#body)"/>
+    <g clip-path="url(#bodyClip)">
+      <path d="M-70 -110 Q -40 0 -70 110 L -30 110 Q -2 0 -30 -110 Z" fill="#ffffff" stroke="#4a1d00" stroke-width="7"/>
+      <path d="M38 -110 Q 64 0 38 110 L 72 110 Q 98 0 72 -110 Z" fill="#ffffff" stroke="#4a1d00" stroke-width="7"/>
+      <ellipse cx="-10" cy="-48" rx="90" ry="22" fill="#ffffff" opacity="0.22"/>
+    </g>
+    <ellipse cx="0" cy="0" rx="138" ry="92" fill="none" stroke="#4a1d00" stroke-width="10"/>
+    <!-- side fin -->
+    <path d="M-6 18 Q 30 30 18 64 Q -10 52 -6 18 Z" fill="#ff8f2e" stroke="#4a1d00" stroke-width="7" stroke-linejoin="round"/>
+    <!-- eye -->
+    <circle cx="96" cy="-20" r="30" fill="#ffffff" stroke="#4a1d00" stroke-width="7"/>
+    <circle cx="104" cy="-18" r="16" fill="#1a1a1a"/>
+    <circle cx="110" cy="-25" r="6" fill="#ffffff"/>
+    <!-- smile -->
+    <path d="M116 30 Q 128 40 136 28" fill="none" stroke="#4a1d00" stroke-width="7" stroke-linecap="round"/>
+    <!-- cheek -->
+    <ellipse cx="84" cy="22" rx="12" ry="7" fill="#ff4f5a" opacity="0.55"/>
+  </g>
+
+  <!-- coin -->
+  <g transform="translate(112 112)">
+    <circle r="70" fill="#a8650a"/>
+    <circle r="62" fill="url(#coin)" stroke="#a8650a" stroke-width="6"/>
+    <circle r="44" fill="none" stroke="#e8a51c" stroke-width="6"/>
+    <text x="0" y="24" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="66" fill="#b8740c">$</text>
+    <ellipse cx="-22" cy="-30" rx="18" ry="9" fill="#ffffff" opacity="0.55" transform="rotate(-30 -22 -30)"/>
+  </g>
+
+  <!-- bubbles -->
+  <g fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-width="4" stroke-opacity="0.8">
+    <circle cx="410" cy="300" r="16"/>
+    <circle cx="436" cy="250" r="10"/>
+    <circle cx="398" cy="232" r="7"/>
+    <circle cx="250" cy="120" r="12"/>
+    <circle cx="276" cy="86" r="7"/>
+  </g>
+</svg>

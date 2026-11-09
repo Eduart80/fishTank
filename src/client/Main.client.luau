@@ -136,8 +136,16 @@ local coinsLabel = make("TextLabel", {
 -- Food status lives on each tank's front glass (see renderFoodGauges); feed at the tank with F.
 
 -- Market / My Tank: round icon buttons, middle of the left side
-local function iconButton(icon: string, caption: string, yOffset: number)
-	local holder = make("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, yOffset), Size = UDim2.new(0, 68, 0, 86), Parent = gui })
+-- One column holds all icons, so a single UIScale shrinks buttons AND the gaps between them.
+local ICON_GAP = 14
+local iconColumn = make("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), Size = UDim2.new(0, 68, 0, 3 * 86 + 2 * ICON_GAP), Parent = gui }, {
+	make("UIListLayout", { Padding = UDim.new(0, ICON_GAP), SortOrder = Enum.SortOrder.LayoutOrder }),
+})
+local iconColumnScale = make("UIScale", { Parent = iconColumn })
+local iconCount = 0
+local function iconButton(icon: string, caption: string, _yOffset: number)
+	iconCount += 1
+	local holder = make("Frame", { BackgroundTransparency = 1, LayoutOrder = iconCount, Size = UDim2.new(0, 68, 0, 86), Parent = iconColumn })
 	local b = make("TextButton", {
 		Text = icon,
 		Font = FONT_BOLD,
@@ -180,8 +188,6 @@ local shopFrame, _, shopList = panel(0, 96, "Robux Shop")
 marketFrame.Visible = false
 tankFrame.Visible = false
 shopFrame.Visible = false
--- only a few items: a short window instead of a full-height one
-shopFrame.Size = UDim2.new(0.47, -96, 0, 64 + #Config.ROBUX * 90)
 local sellAllButton = button({ Text = "Sell all adults", Position = UDim2.new(0.5, 0, 0, 6), Size = UDim2.new(0.27, -4, 0, 28), Parent = tankFrame })
 local slotButton = button({ Text = "+ Slot", Position = UDim2.new(0.77, 0, 0, 6), Size = UDim2.new(0.23, -8, 0, 28), Parent = tankFrame })
 
@@ -240,27 +246,78 @@ end)
 slotButton.Activated:Connect(function()
 	act("buySlot")
 end)
+-- Small screens (phones): windows go full width and only one is open at a time.
+-- Big screens: Market/Shop on the left half, Tank on the right half, both can be open.
+local SMALL_SCREEN_WIDTH = 900
+local allPanels = { marketFrame, shopFrame, tankFrame }
+
+local function isSmall(): boolean
+	local camera = workspace.CurrentCamera
+	return camera ~= nil and camera.ViewportSize.X < SMALL_SCREEN_WIDTH
+end
+
+local function layoutPanels()
+	local small = isSmall()
+	local viewport = if workspace.CurrentCamera then workspace.CurrentCamera.ViewportSize else Vector2.new(1280, 800)
+	-- phone sideways = short screen: shrink the icon column a lot; small/tablet a bit
+	iconColumnScale.Scale = if viewport.Y < 500 then 0.55 elseif small then 0.75 else 1
+	local left = math.floor(12 + 68 * iconColumnScale.Scale + 10) -- windows start right of the icons
+	local shopHeight = 64 + #Config.ROBUX * 90
+	if small then
+		for _, frame in allPanels do
+			frame.Position = UDim2.new(0, left, 0, 64)
+			frame.Size = UDim2.new(1, -left - 12, 1, -76)
+		end
+		shopFrame.Size = UDim2.new(1, -left - 12, 0, shopHeight)
+	else
+		marketFrame.Position = UDim2.new(0, left, 0, 64)
+		marketFrame.Size = UDim2.new(0.47, -left, 1, -76)
+		shopFrame.Position = UDim2.new(0, left, 0, 64)
+		shopFrame.Size = UDim2.new(0.47, -left, 0, shopHeight)
+		tankFrame.Position = UDim2.new(0.51, 0, 0, 64)
+		tankFrame.Size = UDim2.new(0.47, 0, 1, -76)
+	end
+end
+
+-- Opens/closes one window. On small screens, or when they share a spot (Market/Shop), others close.
+local function setPanel(frame: Frame, visible: boolean)
+	if visible then
+		for _, other in allPanels do
+			if other ~= frame and (isSmall() or (frame ~= tankFrame and other ~= tankFrame)) then
+				other.Visible = false
+			end
+		end
+	end
+	frame.Visible = visible
+end
+
 marketToggle.Activated:Connect(function()
-	marketFrame.Visible = not marketFrame.Visible
-	shopFrame.Visible = false -- same spot on screen
+	setPanel(marketFrame, not marketFrame.Visible)
 end)
 shopToggle.Activated:Connect(function()
-	shopFrame.Visible = not shopFrame.Visible
-	marketFrame.Visible = false
+	setPanel(shopFrame, not shopFrame.Visible)
 end)
 tankToggle.Activated:Connect(function()
-	tankFrame.Visible = not tankFrame.Visible
+	setPanel(tankFrame, not tankFrame.Visible)
+end)
+
+layoutPanels()
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layoutPanels)
+
+-- Phones: play sideways like most Roblox games (portrait squeezes every window)
+pcall(function()
+	player.PlayerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 end)
 
 -- Press E at the market counter or at a tank
 ProximityPromptService.PromptTriggered:Connect(function(prompt)
 	if prompt.Name == "MarketPrompt" then
-		marketFrame.Visible = true
+		setPanel(marketFrame, true)
 	elseif prompt.Name == "TankPrompt" then
 		local plot = prompt:FindFirstAncestorWhichIsA("Model")
 		local ownerId = plot and plot:GetAttribute("OwnerId")
 		if ownerId == player.UserId then
-			tankFrame.Visible = true
+			setPanel(tankFrame, true)
 		elseif ownerId and ownerId ~= 0 then
 			showToast("This is " .. prompt.ObjectText .. "'s tank. Nice fish!")
 		else
