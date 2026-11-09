@@ -175,29 +175,38 @@ function BoatService.start(opts)
 	end
 
 	-- ONE schedule for all piers, so boats arrive one after another instead of together.
-	-- Arrivals are spaced interval / #piers apart (same total boats as one timer per pier),
-	-- each goes to a random pier that has no boat right now, never the same pier twice in a row.
+	-- Arrivals are spaced interval / #piers apart (same total boats as one timer per pier).
+	-- Each new boat goes to the free pier that has waited LONGEST since its last boat, so boats
+	-- rotate around the island and never come straight back to the pier one just left.
 	task.spawn(function()
 		local cfg = Config.BOAT
-		local busy, last = {}, nil
+		local busy, lastVisit = {}, {}
+		for i in boats do
+			lastVisit[i] = i - 100 -- first round: main, east, west (lowest = waited longest)
+		end
 		while true do
 			task.wait(rng:NextNumber(cfg.intervalMin, cfg.intervalMax) / #boats)
 			local free = {}
+			local oldest = nil
 			for i in boats do
-				if not busy[i] and (i ~= last or #boats == 1) then
-					table.insert(free, i)
+				if not busy[i] and (oldest == nil or lastVisit[i] < lastVisit[oldest]) then
+					oldest = i
 				end
+			end
+			if oldest then
+				table.insert(free, oldest)
 			end
 			-- "Storm at Sea" market event says no boats are out: none sail in while it lasts
 			local event = MarketService.currentEvent(os.time())
 			local storm = event ~= nil and event.def.id == "storm"
 			local newOffer = if #free > 0 and not storm then makeOffer(opts.getOnlineData(), os.time()) else nil
 			if newOffer then
-				local i = free[rng:NextInteger(1, #free)]
-				busy[i], last = true, i
+				local i = free[1]
+				busy[i] = true
 				task.spawn(function()
 					visit(boats[i], newOffer, opts.notifyAll)
 					busy[i] = nil
+					lastVisit[i] = os.clock() -- counts from when the boat LEFT, not when it arrived
 				end)
 			end
 		end
