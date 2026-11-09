@@ -10,6 +10,7 @@ See also: `creatures.md` (38 creatures, 5 worlds) · `decorations.md` (tank deco
 | 1 | 3D world: plaza, 8 tanks, market board, swimming fish, pop-up menus | ✅ built, testing |
 | 1b | Economy re-tune (unlocks by sales, harder curve) + egg demand pricing + "growing" counts | ✅ built, testing |
 | 1c | **Tank stages** (Small → Medium → Large → Sea Pen, pie slices toward the sea, by slots 6/10/15/20) · 3 piers (main/east/west) with one boat each, taking turns · phone HUD | ✅ built 2026-11-09 |
+| 1d | Ambience (sunny lighting, clouds, tank bubbles, 14 palms) · **Harbor Store hut + patios** (4 spots per tank, 7 coin items + 3 Robux items, inventory "My items" tab, flag colour picker, saved) · ✕ close on every window | ✅ built 2026-11-09 (Robux patio products: ids still 0 = create Developer Products) |
 | 2 | Playtest + tune with 3–5 friends (no new features) | ⬜ |
 | 3 | Collection depth: rare variants, fish info on click, **decorations stage 1**, Goldfish + Pufferfish, food sweet spot, species traits, seagull, fishing pier (see below) | ⬜ |
 | 3.5 | **World 2 — Coral Reef** (+ decor stage 2) — only if players reach Koi and want more | ⬜ |

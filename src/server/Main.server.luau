@@ -13,6 +13,8 @@ local WorldService = require(Services.WorldService)
 local AnalyticsTracker = require(Services.AnalyticsTracker)
 local BoatService = require(Services.BoatService)
 local ShopService = require(Services.ShopService)
+local AmbienceService = require(Services.AmbienceService)
+local PatioService = require(Services.PatioService)
 
 local TICK = 5
 local ACTION_COOLDOWN = 0.15
@@ -38,6 +40,7 @@ remotes.Parent = ReplicatedStorage
 MarketService.start()
 DataService.start()
 WorldService.start()
+AmbienceService.start()
 
 -- Helpers ------------------------------------------------------------------
 local function updateLeaderstats(player: Player, data)
@@ -51,9 +54,12 @@ end
 
 local function pushState(player: Player, data, now: number)
 	local state = TankService.publicState(data, now)
+	local patio = PatioService.publicState(data)
+	state.inventory, state.patio = patio.inventory, patio.patio
 	stateRemote:FireClient(player, state)
 	WorldService.updateFeedPrompt(player, state)
 	WorldService.updateTankStage(player, data.slots)
+	WorldService.updatePatio(player, patio.patio, patio.colors)
 	updateLeaderstats(player, data)
 	WorldService.updateFish(player, data, now)
 end
@@ -134,6 +140,19 @@ local handlers = {
 	buySlot = function(data)
 		return TankService.buySlot(data)
 	end,
+	-- Harbor Store / patio
+	buyDecor = function(data, _now, itemId)
+		return PatioService.buy(data, itemId)
+	end,
+	placeDecor = function(data, _now, arg)
+		if type(arg) ~= "table" then
+			return false, "Bad request"
+		end
+		return PatioService.place(data, arg.spot, arg.item, arg.color)
+	end,
+	pickUpDecor = function(data, _now, spot)
+		return PatioService.pickUp(data, spot)
+	end,
 }
 
 local function runAction(player: Player, action, arg)
@@ -154,7 +173,7 @@ local function runAction(player: Player, action, arg)
 	local coinsBefore = data.coins
 	local ok, msg = handler(data, now, arg)
 	if ok then
-		AnalyticsTracker.economy(player, data, action, data.coins - coinsBefore, if action == "buyEgg" then arg else nil)
+		AnalyticsTracker.economy(player, data, action, data.coins - coinsBefore, if action == "buyEgg" or action == "buyDecor" then arg else nil)
 		AnalyticsTracker.check(player, data)
 	end
 	pushState(player, data, now)

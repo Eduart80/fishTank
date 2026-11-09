@@ -7,6 +7,16 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
 local MarketMath = require(ReplicatedStorage.Shared.MarketMath)
+local PatioModels = require(script.Parent.PatioModels)
+
+-- Patio spots beside each tank's front glass (plot-local x, z; 2 per side), inside the plot's own
+-- pie slice and clear of the widest tank stage, the walkways and the Open/Feed prompts.
+local PATIO_SPOTS = {
+	Vector3.new(-15, 0, -10),
+	Vector3.new(15, 0, -10),
+	Vector3.new(-18, 0, -1),
+	Vector3.new(18, 0, -1),
+}
 
 local WorldService = {}
 
@@ -312,12 +322,41 @@ local function buildTank(index: number, cf: CFrame, parent: Instance)
 	fishValue.Value = "[]"
 	fishValue.Parent = model
 
+	-- patio spots: a faint sand circle while empty; owner gets a "Place item / Pick up" prompt
+	-- (every client hides the prompts on tanks that aren't theirs, like the feed prompt)
+	local patioSpots = {}
+	for spot, offset in PATIO_SPOTS do
+		local marker = part({
+			Name = "PatioSpot",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.1, 5, 5),
+			CFrame = cf * CFrame.new(offset + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+			Material = Enum.Material.Sand,
+			Color = COLORS.sand,
+			Transparency = 0.35,
+			CanCollide = false,
+			CanTouch = false,
+			Parent = model,
+		})
+		marker:SetAttribute("Spot", spot)
+		local patioPrompt = Instance.new("ProximityPrompt")
+		patioPrompt.Name = "PatioPrompt"
+		patioPrompt.ActionText = "Place item"
+		patioPrompt.ObjectText = "Patio spot"
+		patioPrompt.KeyboardKeyCode = Enum.KeyCode.E
+		patioPrompt.MaxActivationDistance = 6
+		patioPrompt.RequiresLineOfSight = false
+		patioPrompt.Parent = marker
+		patioSpots[spot] = { marker = marker, prompt = patioPrompt, itemId = nil, model = nil, cf = cf * CFrame.new(offset) }
+	end
+
 	model.Parent = parent
 
 	local standPos = (cf * CFrame.new(0, 3, -(TANK_D / 2 + 10))).Position
 	local plot = {
 		index = index,
 		cf = cf,
+		patioSpots = patioSpots,
 		front = front,
 		billboard = billboard,
 		stage = nil,
@@ -519,6 +558,164 @@ local function buildPier(parent: Instance)
 	model.Parent = parent
 end
 
+-- Palm trees ------------------------------------------------------------------
+-- Only where tanks can never grow and piers never go: the 4 island corners (diagonal gaps between
+-- tank slices) and the back beach behind the market board. Spots checked against every tank stage
+-- (Sea Pen included) and all piers: nearest trunk is 13+ studs away. { angle°, radius, sideways }
+local PALM_SPOTS = {}
+for _, a in { 45, 135, 225, 315 } do
+	for _, spot in { { 141, -5 }, { 149, 6 }, { 157, -1 } } do
+		table.insert(PALM_SPOTS, { a, spot[1], spot[2] })
+	end
+end
+table.insert(PALM_SPOTS, { 180, 103, -5 })
+table.insert(PALM_SPOTS, { 180, 109, 5 })
+
+local function buildPalm(parent: Instance, base: Vector3, rng: Random)
+	local model = Instance.new("Model")
+	model.Name = "PalmTree"
+	local trunkColor = Color3.fromRGB(140, 105, 70)
+	local leafColor = Color3.fromRGB(70, 150, 70)
+	local height = rng:NextNumber(17, 24)
+	local leanDir = rng:NextNumber(0, math.pi * 2)
+	local lean = rng:NextNumber(3, 6) -- studs the top leans sideways
+	local SEGMENTS = 6
+
+	-- curved trunk: segments bending more toward the top, getting thinner
+	local function trunkPoint(f: number): Vector3
+		local side = lean * f * f
+		return base + Vector3.new(math.cos(leanDir) * side, height * f, math.sin(leanDir) * side)
+	end
+	for i = 1, SEGMENTS do
+		local p0, p1 = trunkPoint((i - 1) / SEGMENTS), trunkPoint(i / SEGMENTS)
+		local d = 1.5 - 0.5 * (i / SEGMENTS)
+		part({
+			Name = "Trunk",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new((p1 - p0).Magnitude + 0.3, d, d),
+			CFrame = CFrame.lookAt((p0 + p1) / 2, p1) * CFrame.Angles(0, math.pi / 2, 0), -- cylinder axis (X) along the trunk
+			Material = Enum.Material.Wood,
+			Color = trunkColor:Lerp(Color3.fromRGB(110, 80, 55), (i % 2) * 0.5), -- ringed bark
+			Parent = model,
+		})
+	end
+	local top = trunkPoint(1)
+
+	-- coconuts under the leaves
+	for k = 1, rng:NextInteger(2, 4) do
+		local a = k * 2.1 + rng:NextNumber(0, 0.5)
+		part({ Name = "Coconut", Shape = Enum.PartType.Ball, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(top + Vector3.new(math.cos(a) * 0.7, -0.8, math.sin(a) * 0.7)), Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(95, 70, 40), CanCollide = false, Parent = model })
+	end
+
+	-- fronds: each leaf goes up and out, then droops
+	local leaves = rng:NextInteger(7, 9)
+	for k = 1, leaves do
+		local a = (k / leaves) * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
+		local out = Vector3.new(math.cos(a), 0, math.sin(a))
+		local len = rng:NextNumber(6, 8)
+		local mid = top + out * (len * 0.5) + Vector3.new(0, 1.2, 0)
+		local tip = top + out * len + Vector3.new(0, -rng:NextNumber(1.5, 3), 0)
+		for _, seg in { { top, mid, 1.8 }, { mid, tip, 1.3 } } do
+			local s, e, w = seg[1], seg[2], seg[3]
+			part({
+				Name = "Leaf",
+				Size = Vector3.new(w, 0.15, (e - s).Magnitude + 0.4),
+				CFrame = CFrame.lookAt((s + e) / 2, e),
+				Material = Enum.Material.Grass,
+				Color = leafColor:Lerp(Color3.fromRGB(110, 170, 70), rng:NextNumber(0, 0.5)),
+				CanCollide = false,
+				CastShadow = true,
+				Parent = model,
+			})
+		end
+	end
+	model.Parent = parent
+end
+
+-- Harbor Store hut ------------------------------------------------------------
+-- On the plaza opposite the market counter, facing the centre. Press E at the counter.
+local STORE_POS = Vector3.new(0, FLOOR_Y, 30)
+
+local function buildStore(parent: Instance)
+	local model = Instance.new("Model")
+	model.Name = "HarborStore"
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	local cf = CFrame.lookAt(STORE_POS, Vector3.new(0, FLOOR_Y, 0)) -- front (-Z) faces the plaza centre
+	local W, D, H = 16, 10, 9
+	local wood, planks = COLORS.wood, Color3.fromRGB(205, 170, 120)
+	local function piece(name, size, offset: CFrame, color, material, collide)
+		return part({ Name = name, Size = size, CFrame = cf * offset, Color = color, Material = material or Enum.Material.WoodPlanks, CanCollide = collide ~= false, Parent = model })
+	end
+
+	piece("Deck", Vector3.new(W + 2, 0.6, D + 2), CFrame.new(0, 0.3, 0), wood)
+	piece("BackWall", Vector3.new(W, H, 0.6), CFrame.new(0, H / 2 + 0.6, D / 2), planks)
+	for _, side in { -1, 1 } do
+		piece("SideWall", Vector3.new(0.6, H, D), CFrame.new(side * W / 2, H / 2 + 0.6, 0), planks)
+		piece("Post", Vector3.new(0.8, H + 1.5, 0.8), CFrame.new(side * (W / 2 + 0.3), (H + 1.5) / 2 + 0.6, -D / 2 - 1.5), wood)
+	end
+	-- shelves with little goods on the back wall
+	for row = 1, 2 do
+		piece("Shelf", Vector3.new(W - 2, 0.3, 1.4), CFrame.new(0, 2.5 + row * 2.2, D / 2 - 1), wood)
+		for k = 1, 6 do
+			local colors = { Color3.fromRGB(230, 80, 70), Color3.fromRGB(70, 160, 230), Color3.fromRGB(250, 200, 60), Color3.fromRGB(90, 190, 110) }
+			piece("Goods", Vector3.new(1, 1, 0.8), CFrame.new(-W / 2 + 1.5 + k * 2, 3.2 + row * 2.2, D / 2 - 1), colors[(k + row) % 4 + 1], Enum.Material.SmoothPlastic, false)
+		end
+	end
+	-- counter at the front
+	local counter = piece("Counter", Vector3.new(W - 3, 3.4, 1.6), CFrame.new(0, 2.3, -D / 2 + 1.5), wood)
+	piece("CounterTop", Vector3.new(W - 2.6, 0.3, 2), CFrame.new(0, 4.1, -D / 2 + 1.5), planks)
+	-- roof + striped awning sloping down over the front
+	piece("Roof", Vector3.new(W + 2, 0.5, D + 1), CFrame.new(0, H + 0.85, 0.5), wood)
+	local stripes = 8
+	for k = 0, stripes - 1 do
+		local x = -W / 2 - 1 + (k + 0.5) * (W + 2) / stripes
+		piece("Awning", Vector3.new((W + 2) / stripes, 0.25, 4), CFrame.new(x, H + 0.1, -D / 2 - 1.2) * CFrame.Angles(math.rad(18), 0, 0), if k % 2 == 0 then Color3.fromRGB(230, 70, 70) else Color3.fromRGB(250, 245, 235), Enum.Material.Fabric, false)
+	end
+
+	-- sign above the awning
+	local sign = piece("Sign", Vector3.new(W - 2, 2.6, 0.4), CFrame.new(0, H + 2.4, -D / 2 + 0.2), Color3.fromRGB(14, 28, 44), Enum.Material.SmoothPlastic)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 30
+	gui.LightInfluence = 0
+	gui.Parent = sign
+	textLabel({ Text = "HARBOR STORE", Position = UDim2.fromScale(0.05, 0.08), Size = UDim2.fromScale(0.9, 0.55), Parent = gui })
+	textLabel({ Text = "Patio decor · chairs · torches", TextColor3 = Color3.fromRGB(255, 220, 150), Position = UDim2.fromScale(0.1, 0.62), Size = UDim2.fromScale(0.8, 0.3), Parent = gui })
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "StorePrompt"
+	prompt.ActionText = "Open Store"
+	prompt.ObjectText = "Harbor Store"
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = counter
+
+	-- show-off display in front of the hut (same models players can buy)
+	for _, display in { { "umbrella", -11, -9 }, { "chair", -11, -8.5 }, { "torch", 10.5, -8 }, { "sandcastle", 12, -11 } } do
+		local m = PatioModels.build(display[1], cf * CFrame.new(display[2], 0, display[3]))
+		if m then
+			m.Parent = model
+		end
+	end
+
+	model.Parent = parent
+end
+
+local function buildPalms(parent: Instance)
+	local folder = Instance.new("Folder")
+	folder.Name = "Palms"
+	local rng = Random.new(2026)
+	for _, spot in PALM_SPOTS do
+		local a = math.rad(spot[1])
+		local r, side = spot[2], spot[3]
+		local x = math.sin(a) * r + math.cos(a) * side
+		local z = math.cos(a) * r - math.sin(a) * side
+		buildPalm(folder, Vector3.new(x, FLOOR_Y - 0.4, z), rng) -- beach sand top
+	end
+	folder.Parent = parent
+end
+
 function WorldService.start()
 	local world = Instance.new("Folder")
 	world.Name = "FishWorld"
@@ -554,6 +751,8 @@ function WorldService.start()
 	end
 
 	buildMarket(world)
+	buildStore(world)
+	buildPalms(world)
 	world.Parent = workspace
 end
 
@@ -600,6 +799,42 @@ function WorldService.release(player: Player)
 	plot.model:SetAttribute("AutoFeeder", false)
 	plot.lastJson = "[]"
 	setStage(plot, 1)
+	WorldService.showPatio(plot, {}, {})
+end
+
+-- Builds / removes patio items so the plot shows exactly `patio` ({ s1 = itemId, ... }) with
+-- `colors` ({ s1 = "red" } for flags). Only rebuilds spots that changed.
+function WorldService.showPatio(plot, patio, colors)
+	for spot, s in plot.patioSpots do
+		local want = patio["s" .. spot]
+		local wantColor = colors and colors["s" .. spot]
+		if s.itemId ~= want or s.color ~= wantColor then
+			s.color = wantColor
+			if s.model then
+				s.model:Destroy()
+				s.model = nil
+			end
+			s.itemId = want
+			if want then
+				local c = wantColor and Config.PatioColorByKey[wantColor]
+				s.model = PatioModels.build(want, s.cf, c and c.color)
+				if s.model then
+					s.model.Parent = plot.model
+				end
+			end
+			local item = want and Config.PatioById[want]
+			s.marker.Transparency = if want then 1 else 0.35
+			s.prompt.ActionText = if item then "Pick up" else "Place item"
+			s.prompt.ObjectText = if item then item.name else "Patio spot"
+		end
+	end
+end
+
+function WorldService.updatePatio(player: Player, patio, colors)
+	local plot = plotOf[player]
+	if plot then
+		WorldService.showPatio(plot, patio or {}, colors or {})
+	end
 end
 
 -- Grows (or, for a new owner, resets) the tank to match the owner's slot count.

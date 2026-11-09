@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
 local DataService = require(script.Parent.DataService)
 local TankService = require(script.Parent.TankService)
+local PatioService = require(script.Parent.PatioService)
 
 local ShopService = {}
 
@@ -25,6 +26,12 @@ for _, item in Config.ROBUX do
 		else
 			byPassId[item.id] = item
 		end
+	end
+end
+-- Robux patio items (Harbor Store) are Developer Products too
+for _, item in Config.PATIO_ITEMS do
+	if item.robuxId and item.robuxId ~= 0 then
+		byProductId[item.robuxId] = { key = "patio", patioId = item.id, name = item.name }
 	end
 end
 
@@ -50,6 +57,14 @@ local function grantProduct(item, data, now: number)
 		return function()
 			data.boostUntil = before
 		end, "Grow Boost active: your fish grow 2x faster!"
+	elseif item.key == "patio" then
+		-- goes to the inventory like a coin purchase; if it's full (10 of that item) we still grant
+		-- it: they paid Robux, so the cap must never eat a purchase
+		data.inventory = data.inventory or {}
+		data.inventory[item.patioId] = (data.inventory[item.patioId] or 0) + 1
+		return function()
+			PatioService.take(data, item.patioId)
+		end, item.name .. " is yours! Go to your tank and press E on a sand circle to place it."
 	end
 	return nil
 end

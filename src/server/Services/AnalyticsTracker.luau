@@ -73,7 +73,7 @@ function AnalyticsTracker.check(player: Player, data)
 	data.onboard = target
 end
 
-local SINKS = { buyEgg = true, feed = true, buySlot = true }
+local SINKS = { buyEgg = true, feed = true, buySlot = true, buyDecor = true }
 local SOURCES = { sell = true, sellAllAdults = true }
 
 -- Coin movement from one player action (delta = coins after - coins before).

@@ -18,6 +18,8 @@ local DataService = require(Services.DataService)
 local MarketService = require(Services.MarketService)
 local TankService = require(Services.TankService)
 local AnalyticsTracker = require(Services.AnalyticsTracker)
+local PatioService = require(Services.PatioService)
+local PatioModels = require(Services.PatioModels)
 
 -- wait until Main has started the market (WorldService starts right after it)
 workspace:WaitForChild("FishWorld", 30)
@@ -475,6 +477,75 @@ end)
 
 test("Expensive fish events are capped at x2", function(check)
 	check(Config.ById.tuna.maxEventMult == 2 and Config.ById.koi.maxEventMult == 2, "cap missing")
+end)
+
+-- Harbor Store / patio ------------------------------------------------------
+test("Store: buying a coin item costs coins and goes to the inventory", function(check)
+	local d = newPlayer(now)
+	d.coins = 500
+	local ok, msg = PatioService.buy(d, "chair")
+	check(ok, tostring(msg))
+	check(d.coins == 500 - Config.PatioById.chair.price, "coins " .. d.coins)
+	check(d.inventory.chair == 1, "not in inventory")
+end)
+
+test("Store: can't buy without coins, can't buy Robux items with coins, junk ids refused", function(check)
+	local d = newPlayer(now)
+	d.coins = 10
+	check(not PatioService.buy(d, "umbrella"), "bought without coins")
+	check(d.coins == 10, "coins changed")
+	d.coins = 1e9
+	check(not PatioService.buy(d, "goldenFish"), "Robux item bought with coins")
+	check(not PatioService.buy(d, "nope") and not PatioService.buy(d, 5), "junk id accepted")
+end)
+
+test("Patio: place, swap and pick up keep the inventory honest", function(check)
+	local d = newPlayer(now)
+	d.coins = 1e6
+	PatioService.buy(d, "chair")
+	PatioService.buy(d, "torch")
+	check(not PatioService.place(d, 1, "umbrella"), "placed an item not owned")
+	check(PatioService.place(d, 1, "chair"), "place failed")
+	check(d.patio.s1 == "chair" and d.inventory.chair == nil, "chair not moved to the patio")
+	check(PatioService.place(d, 1, "torch"), "swap failed")
+	check(d.patio.s1 == "torch" and d.inventory.chair == 1 and d.inventory.torch == nil, "swap lost an item")
+	check(PatioService.pickUp(d, 1), "pick up failed")
+	check(d.patio.s1 == nil and d.inventory.torch == 1, "pick up lost the torch")
+	check(not PatioService.place(d, 0, "torch") and not PatioService.place(d, Config.PATIO_SPOTS + 1, "torch") and not PatioService.place(d, 1.5, "torch"), "bad spot accepted")
+end)
+
+test("Flags: colour is saved, junk colours refused, recolour in place, pick up clears it", function(check)
+	local d = newPlayer(now)
+	d.coins = 1e6
+	PatioService.buy(d, "flag")
+	PatioService.buy(d, "chair")
+	check(not PatioService.place(d, 1, "flag", "sparkly"), "junk colour accepted")
+	check(d.inventory.flag == 1, "flag lost on refused place")
+	check(PatioService.place(d, 1, "flag", "red"), "place red failed")
+	check(d.patio.s1 == "flag" and d.patioColors.s1 == "red", "colour not saved")
+	check(PatioService.place(d, 1, "flag", "green") and d.patioColors.s1 == "green", "recolour failed")
+	check((d.inventory.flag or 0) == 0, "recolour changed the inventory")
+	check(PatioService.place(d, 2, "chair", "red") and d.patioColors.s2 == nil, "chair got a colour")
+	check(PatioService.pickUp(d, 1) and d.patioColors.s1 == nil, "colour left behind")
+end)
+
+test("Patio: old saves without patio fields still work", function(check)
+	local d = newPlayer(now)
+	d.inventory, d.patio = nil, nil
+	check(not PatioService.pickUp(d, 1), "picked up from nothing")
+	local state = PatioService.publicState(d)
+	check(type(state.inventory) == "table" and type(state.patio) == "table", "fields missing")
+end)
+
+test("Every store item has a price XOR a Robux id, and a 3D model", function(check)
+	for _, item in Config.PATIO_ITEMS do
+		check((item.price ~= nil) ~= (item.robuxId ~= nil), item.id .. " needs price OR robuxId")
+		local m = PatioModels.build(item.id, CFrame.new(0, -1000, 0))
+		check(m ~= nil and #m:GetChildren() > 0, item.id .. " has no model")
+		if m then
+			m:Destroy()
+		end
+	end
 end)
 
 -- Robux items -------------------------------------------------------------

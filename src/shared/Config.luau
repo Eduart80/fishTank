@@ -90,6 +90,46 @@ Config.ROBUX = {
 	{ key = "growBoost", kind = "product", id = 3729887473, name = "Grow Boost (1 hour)", text = "All your fish grow 2x faster for 1 hour. Buy again to add time.", seconds = 3600 },
 }
 
+-- Harbor Store: patio items, placed on the 4 spots beside your tank (2 each side of the front glass).
+-- PRETTY ONLY: no effect on fish or coins earned (safe for the economy, coin items are a coin sink).
+-- Each item costs EITHER coins (price) OR Robux (robuxId = a Developer Product id; 0 = "Not set up").
+-- Robux items: create a Developer Product per item on create.roblox.com -> your experience ->
+-- Monetization -> Developer Products, set the Robux price there, paste the id here.
+Config.PATIO_SPOTS = 4
+Config.PATIO_MAX_OWNED = 10 -- per item, in your inventory
+Config.PATIO_ITEMS = {
+	{ id = "flag", name = "Flag", price = 100, colorable = true, text = "Tall flag. Pick its colour when you place it." },
+	{ id = "chair", name = "Beach Chair", price = 120, text = "Striped deck chair. You can sit in it!" },
+	{ id = "torch", name = "Tiki Torch", price = 150, text = "Bamboo torch with a real flame and warm light." },
+	{ id = "lifebuoy", name = "Lifebuoy Stand", price = 180, text = "Red and white ring on a post." },
+	{ id = "umbrella", name = "Beach Umbrella", price = 200, text = "Big red and white sun umbrella." },
+	{ id = "pottedPalm", name = "Potted Palm", price = 250, text = "A little palm tree in a clay pot." },
+	{ id = "sandcastle", name = "Sandcastle", price = 400, text = "Towers, walls and a tiny flag." },
+	{ id = "neonPalm", name = "Neon Palm", robuxId = 0, text = "Glowing palm tree, shines at night." },
+	{ id = "treasure", name = "Treasure Chest", robuxId = 0, text = "Open chest full of gold, sparkling." },
+	{ id = "goldenFish", name = "Golden Fish Statue", robuxId = 0, text = "Shiny gold fish on a stone pedestal." },
+}
+Config.PatioById = {}
+for _, item in Config.PATIO_ITEMS do
+	Config.PatioById[item.id] = item
+end
+-- Colours for items with colorable = true (picked when placing; pick up + place again to change)
+Config.PATIO_COLORS = {
+	{ key = "red", name = "Red", color = Color3.fromRGB(220, 50, 50) },
+	{ key = "orange", name = "Orange", color = Color3.fromRGB(245, 140, 30) },
+	{ key = "yellow", name = "Yellow", color = Color3.fromRGB(250, 210, 40) },
+	{ key = "green", name = "Green", color = Color3.fromRGB(50, 170, 70) },
+	{ key = "blue", name = "Blue", color = Color3.fromRGB(40, 110, 220) },
+	{ key = "purple", name = "Purple", color = Color3.fromRGB(140, 70, 200) },
+	{ key = "black", name = "Black", color = Color3.fromRGB(30, 30, 35) },
+	{ key = "white", name = "White", color = Color3.fromRGB(245, 245, 240) },
+}
+Config.PatioColorByKey = {}
+for _, c in Config.PATIO_COLORS do
+	Config.PatioColorByKey[c.key] = c
+end
+Config.PATIO_DEFAULT_COLOR = "blue"
+
 -- Studio only: run the scenario tests (server/Tests) every time you press Play. Never runs live.
 Config.RUN_TESTS_IN_STUDIO = true
 

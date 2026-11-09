@@ -169,6 +169,24 @@ shopToggle.BackgroundColor3 = Color3.fromRGB(40, 160, 90)
 -- x / leftOffset: the market panel starts right of the icon buttons
 local function panel(x: number, leftOffset: number, title: string)
 	local frame = make("Frame", { BackgroundColor3 = C.panel, Position = UDim2.new(x, leftOffset, 0, 64), Size = UDim2.new(0.47, -leftOffset, 1, -76), Parent = gui }, { corner() })
+	-- round ✕ on the top-right corner (sits half outside, so it never covers header buttons)
+	local close = make("TextButton", {
+		Name = "Close",
+		Text = "✕",
+		Font = FONT_BOLD,
+		TextScaled = true,
+		TextColor3 = C.text,
+		BackgroundColor3 = C.down,
+		AutoButtonColor = true,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -2, 0, 2),
+		Size = UDim2.new(0, 30, 0, 30),
+		ZIndex = 5,
+		Parent = frame,
+	}, { make("UICorner", { CornerRadius = UDim.new(1, 0) }), make("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }), make("UIStroke", { Color = C.text, Thickness = 1.5, Transparency = 0.3 }) })
+	close.Activated:Connect(function()
+		frame.Visible = false
+	end)
 	local titleLabel = label({ Font = FONT_BOLD, Text = title, Position = UDim2.new(0, 12, 0, 6), Size = UDim2.new(0.5, 0, 0, 28), MaxText = 22, Parent = frame })
 	local list = make("ScrollingFrame", {
 		BackgroundTransparency = 1,
@@ -185,10 +203,23 @@ end
 local marketFrame, _, marketList = panel(0, 96, "Fish Market")
 local tankFrame, tankTitle, tankList = panel(0.51, 0, "Your Tank")
 local shopFrame, _, shopList = panel(0, 96, "Robux Shop")
+local storeFrame, storeTitle, storeList = panel(0, 96, "Harbor Store")
+-- store header: title | Store | My items | R$ Shop tabs, then a hint line, then the list
+storeTitle.Size = UDim2.new(0.4, -12, 0, 28)
+local storeTabAll = button({ Text = "Store", Position = UDim2.new(0.4, 0, 0, 6), Size = UDim2.new(0.2, -4, 0, 28), Parent = storeFrame })
+local storeTabMine = button({ Text = "My items", Position = UDim2.new(0.6, 0, 0, 6), Size = UDim2.new(0.2, -4, 0, 28), Parent = storeFrame })
+local storeTabRobux = button({ Text = "R$ Shop", BackgroundColor3 = Color3.fromRGB(40, 160, 90), Position = UDim2.new(0.8, 0, 0, 6), Size = UDim2.new(0.2, -8, 0, 28), Parent = storeFrame })
+local storeHint = label({ Text = "", TextColor3 = C.warn, Position = UDim2.new(0, 12, 0, 38), Size = UDim2.new(1, -24, 0, 18), MaxText = 14, Parent = storeFrame })
+local storeEmpty = label({ Text = "Nothing yet. Buy decor in the Store tab!", TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 12, 0, 80), Size = UDim2.new(1, -24, 0, 24), MaxText = 16, Visible = false, Parent = storeFrame })
+storeList.Position = UDim2.new(0, 8, 0, 60)
+storeList.Size = UDim2.new(1, -16, 1, -68)
+-- the Robux shop links to the decor store too (so it opens without walking to the hut)
+local shopToStore = button({ Text = "Decor Store", BackgroundColor3 = C.warn, Position = UDim2.new(0.6, 0, 0, 6), Size = UDim2.new(0.4, -8, 0, 28), Parent = shopFrame })
 -- panels are pop-ups now so the 3D world stays visible
 marketFrame.Visible = false
 tankFrame.Visible = false
 shopFrame.Visible = false
+storeFrame.Visible = false
 local sellAllButton = button({ Text = "Sell all adults", Position = UDim2.new(0.5, 0, 0, 6), Size = UDim2.new(0.27, -4, 0, 28), Parent = tankFrame })
 local slotButton = button({ Text = "+ Slot", Position = UDim2.new(0.77, 0, 0, 6), Size = UDim2.new(0.23, -8, 0, 28), Parent = tankFrame })
 
@@ -250,7 +281,7 @@ end)
 -- Small screens (phones): windows go full width and only one is open at a time.
 -- Big screens: Market/Shop on the left half, Tank on the right half, both can be open.
 local SMALL_SCREEN_WIDTH = 900
-local allPanels = { marketFrame, shopFrame, tankFrame }
+local allPanels = { marketFrame, shopFrame, tankFrame, storeFrame }
 
 -- Phone = touch screen that is wide (sideways phone ~2:1; tablets are ~4:3) or just short.
 -- Pixel width alone fails: high-res phones (Samsung) report PC-sized viewports.
@@ -295,6 +326,8 @@ local function layoutPanels()
 		marketFrame.Size = UDim2.new(0.47, -left, 1, -76)
 		shopFrame.Position = UDim2.new(0, left, 0, 64)
 		shopFrame.Size = UDim2.new(0.47, -left, 0, shopHeight)
+		storeFrame.Position = UDim2.new(0, left, 0, 64)
+		storeFrame.Size = UDim2.new(0.47, -left, 1, -76)
 		tankFrame.Position = UDim2.new(0.51, 0, 0, 64)
 		tankFrame.Size = UDim2.new(0.47, 0, 1, -76)
 	end
@@ -592,10 +625,194 @@ local function renderShop()
 	end
 end
 
+-- Harbor Store (patio decor) --------------------------------------------------
+-- Open at the store hut (browse + buy) or from an empty patio spot next to your tank (buy + place).
+-- Coin items: the server buys them (PatioService). Robux items: Roblox's purchase window, then
+-- the server grants them (ShopService). Everything you own is saved and comes back next visit.
+local storeRows = {}
+local placeSpot = nil -- patio spot number we're choosing an item for, or nil when just browsing
+local storeMode = "all" -- "all" = everything for sale, "mine" = only what you own / have placed
+
+-- Colour picker for colorable items (flags): pops up over the store list when you press Place.
+local colorPicker = make("Frame", {
+	BackgroundColor3 = C.bg,
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -10),
+	Size = UDim2.new(1, -20, 0, 104),
+	Visible = false,
+	ZIndex = 10,
+	Parent = storeFrame,
+}, { corner(8), make("UIStroke", { Color = C.warn, Thickness = 2 }) })
+local pickerTitle = label({ Font = FONT_BOLD, Text = "Pick a colour", TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 8, 0, 6), Size = UDim2.new(1, -16, 0, 22), MaxText = 16, ZIndex = 11, Parent = colorPicker })
+local swatchRow = make("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 36), Size = UDim2.new(1, -16, 0, 56), ZIndex = 11, Parent = colorPicker }, {
+	make("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
+})
+local pickerItem = nil -- the item waiting for a colour
+for i, c in Config.PATIO_COLORS do
+	local swatch = make("TextButton", {
+		LayoutOrder = i,
+		Text = "",
+		BackgroundColor3 = c.color,
+		AutoButtonColor = true,
+		Size = UDim2.new(1 / #Config.PATIO_COLORS, -6, 1, 0),
+		ZIndex = 12,
+		Parent = swatchRow,
+	}, { make("UICorner", { CornerRadius = UDim.new(1, 0) }), make("UIStroke", { Color = C.text, Thickness = 2, Transparency = 0.2 }), make("UIAspectRatioConstraint", { AspectRatio = 1 }) })
+	swatch.Activated:Connect(function()
+		if placeSpot and pickerItem then
+			act("placeDecor", { spot = placeSpot, item = pickerItem.id, color = c.key })
+			colorPicker.Visible = false
+			storeFrame.Visible = false
+			placeSpot, pickerItem = nil, nil
+		end
+	end)
+end
+
+for i, item in Config.PATIO_ITEMS do
+	local isRobux = item.robuxId ~= nil
+	local row = make("Frame", { LayoutOrder = i, BackgroundColor3 = C.row, Size = UDim2.new(1, -6, 0, 64), Parent = storeList }, { corner(6) })
+	make("Frame", { BackgroundColor3 = if isRobux then Color3.fromRGB(40, 160, 90) else C.warn, Size = UDim2.new(0, 6, 1, 0), Parent = row }, { corner(3) })
+	label({ Font = FONT_BOLD, Text = item.name, Position = UDim2.new(0, 14, 0, 4), Size = UDim2.new(0.5, -14, 0, 22), MaxText = 18, Parent = row })
+	label({ Text = item.text, TextColor3 = C.dim, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.new(0, 14, 0, 26), Size = UDim2.new(0.5, -14, 0, 34), MaxText = 13, Parent = row })
+	local owned = label({ Text = "", TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0.5, 0, 0, 4), Size = UDim2.new(0.14, 0, 1, -8), MaxText = 14, Parent = row })
+	local buy = button({ Text = "...", BackgroundColor3 = if isRobux then Color3.fromRGB(40, 160, 90) else C.button, Position = UDim2.new(0.64, 0, 0, 12), Size = UDim2.new(0.18, -4, 1, -24), Parent = row })
+	local place = button({ Text = "Place", BackgroundColor3 = C.warn, Position = UDim2.new(0.82, 0, 0, 12), Size = UDim2.new(0.18, -8, 1, -24), Visible = false, Parent = row })
+	local state = { frame = row, item = item, owned = owned, buy = buy, place = place, robuxPrice = nil }
+	storeRows[item.id] = state
+
+	if isRobux and item.robuxId ~= 0 then
+		task.spawn(function()
+			local ok, product = pcall(MarketplaceService.GetProductInfo, MarketplaceService, item.robuxId, Enum.InfoType.Product)
+			if ok and product and product.PriceInRobux then
+				state.robuxPrice = product.PriceInRobux
+			end
+		end)
+	end
+
+	buy.Activated:Connect(function()
+		if not isRobux then
+			act("buyDecor", item.id)
+		elseif item.robuxId == 0 then
+			showToast("This item is not set up yet")
+		else
+			MarketplaceService:PromptProductPurchase(player, item.robuxId)
+		end
+	end)
+	place.Activated:Connect(function()
+		if not placeSpot then
+			return
+		end
+		local have = tank and tank.inventory and tank.inventory[item.id] or 0
+		local here = tank and tank.patio and tank.patio["s" .. placeSpot]
+		if item.colorable and (have > 0 or here == item.id) then
+			-- flags: choose a colour first (also works to recolour the flag already on this spot)
+			pickerItem = item
+			pickerTitle.Text = ("Pick a colour for your %s"):format(item.name)
+			colorPicker.Visible = true
+			return
+		end
+		act("placeDecor", { spot = placeSpot, item = item.id })
+		storeFrame.Visible = false
+		placeSpot = nil
+	end)
+end
+
+local function renderStore()
+	if not storeFrame.Visible then
+		return
+	end
+	local inventory = (tank and tank.inventory) or {}
+	local placedCount = {}
+	for _, id in (tank and tank.patio) or {} do
+		placedCount[id] = (placedCount[id] or 0) + 1
+	end
+	local coins = (tank and tank.coins) or 0
+	local mine = storeMode == "mine"
+	storeTitle.Text = if placeSpot then "Patio spot" elseif mine then "My items" else "Harbor Store"
+	storeHint.Text = if placeSpot then "Press Place on an item you own (buy it first if needed)"
+		elseif mine then "To place: go to your tank, press E on a sand circle"
+		else "Buy here, then press E on a sand circle next to your tank"
+	storeTabAll.BackgroundColor3 = if mine then C.buttonOff else C.button
+	storeTabMine.BackgroundColor3 = if mine then C.button else C.buttonOff
+	local shown = 0
+	for id, row in storeRows do
+		local item = row.item
+		local have = inventory[id] or 0
+		local placed = placedCount[id] or 0
+		row.frame.Visible = not mine or have > 0 or placed > 0
+		if row.frame.Visible then
+			shown += 1
+		end
+		local parts = {}
+		if have > 0 then
+			table.insert(parts, ("Owned %d"):format(have))
+		end
+		if placed > 0 then
+			table.insert(parts, ("Placed %d"):format(placed))
+		end
+		row.owned.Text = table.concat(parts, "\n")
+		if item.price then
+			row.buy.Text = fmt(item.price)
+			row.buy.BackgroundColor3 = if coins >= item.price then C.button else C.buttonOff
+		elseif item.robuxId == 0 then
+			row.buy.Text = "Not set up"
+			row.buy.BackgroundColor3 = C.buttonOff
+		else
+			row.buy.Text = if row.robuxPrice then ("R$ %d"):format(row.robuxPrice) else "R$"
+			row.buy.BackgroundColor3 = Color3.fromRGB(40, 160, 90)
+		end
+		row.place.Visible = placeSpot ~= nil
+		row.place.BackgroundColor3 = if have > 0 then C.warn else C.buttonOff
+	end
+	storeEmpty.Visible = shown == 0
+end
+
+local function openStore(spot: number?, mode: string?)
+	placeSpot = spot
+	colorPicker.Visible = false
+	pickerItem = nil
+	storeMode = mode or "all"
+	setPanel(storeFrame, true)
+	renderStore()
+end
+
+storeTabAll.Activated:Connect(function()
+	openStore(placeSpot, "all")
+end)
+storeTabMine.Activated:Connect(function()
+	openStore(placeSpot, "mine")
+end)
+storeTabRobux.Activated:Connect(function()
+	placeSpot = nil
+	setPanel(shopFrame, true)
+end)
+shopToStore.Activated:Connect(function()
+	openStore(nil, "all")
+end)
+
+ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	if prompt.Name == "StorePrompt" then
+		openStore(nil)
+	elseif prompt.Name == "PatioPrompt" then
+		local plot = prompt:FindFirstAncestorWhichIsA("Model")
+		if not plot or plot:GetAttribute("OwnerId") ~= player.UserId then
+			return
+		end
+		local spot = prompt.Parent:GetAttribute("Spot")
+		local placed = tank and tank.patio and tank.patio["s" .. tostring(spot)]
+		if placed then
+			act("pickUpDecor", spot)
+		else
+			openStore(spot)
+		end
+	end
+end)
+
 Remotes:WaitForChild("State").OnClientEvent:Connect(function(payload)
 	tank = payload
 	tankAt = os.clock()
 	renderTank()
+	renderStore()
 end)
 
 Remotes:WaitForChild("Market").OnClientEvent:Connect(function(payload)
@@ -612,6 +829,7 @@ end)
 require(script.Parent:WaitForChild("FishRenderer")).start()
 require(script.Parent:WaitForChild("Seagulls")).start()
 require(script.Parent:WaitForChild("BoatRenderer")).start()
+require(script.Parent:WaitForChild("Bubbles")).start()
 
 -- Feed prompts: only show the one on MY tank (each client hides the others locally)
 local function updateFeedPrompts()
@@ -620,11 +838,16 @@ local function updateFeedPrompts()
 		return
 	end
 	for _, plot in plotsFolder:GetChildren() do
+		local mine = plot:GetAttribute("OwnerId") == player.UserId
 		local feedPrompt = plot:FindFirstChild("FeedPrompt", true)
-		if feedPrompt then
-			local mine = plot:GetAttribute("OwnerId") == player.UserId
-			if feedPrompt.Enabled ~= mine then
-				feedPrompt.Enabled = mine
+		if feedPrompt and feedPrompt.Enabled ~= mine then
+			feedPrompt.Enabled = mine
+		end
+		-- patio spots: only the owner can place / pick up
+		for _, d in plot:GetChildren() do
+			local patioPrompt = d.Name == "PatioSpot" and d:FindFirstChild("PatioPrompt")
+			if patioPrompt and patioPrompt.Enabled ~= mine then
+				patioPrompt.Enabled = mine
 			end
 		end
 	end
@@ -683,6 +906,7 @@ while true do
 	updateFeedPrompts()
 	renderFoodGauges()
 	renderShop()
+	renderStore()
 	renderTank()
 	renderMarket()
 end
