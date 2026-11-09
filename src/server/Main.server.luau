@@ -12,6 +12,7 @@ local TankService = require(Services.TankService)
 local WorldService = require(Services.WorldService)
 local AnalyticsTracker = require(Services.AnalyticsTracker)
 local BoatService = require(Services.BoatService)
+local ShopService = require(Services.ShopService)
 
 local TICK = 5
 local ACTION_COOLDOWN = 0.15
@@ -49,7 +50,9 @@ local function updateLeaderstats(player: Player, data)
 end
 
 local function pushState(player: Player, data, now: number)
-	stateRemote:FireClient(player, TankService.publicState(data, now))
+	local state = TankService.publicState(data, now)
+	stateRemote:FireClient(player, state)
+	WorldService.updateFeedPrompt(player, state)
 	updateLeaderstats(player, data)
 	WorldService.updateFish(player, data, now)
 end
@@ -107,7 +110,7 @@ local handlers = {
 	end,
 }
 
-actionRemote.OnServerInvoke = function(player: Player, action, arg)
+local function runAction(player: Player, action, arg)
 	local clock = os.clock()
 	if lastAction[player] and clock - lastAction[player] < ACTION_COOLDOWN then
 		return { ok = false, msg = "Slow down" }
@@ -131,6 +134,16 @@ actionRemote.OnServerInvoke = function(player: Player, action, arg)
 	pushState(player, data, now)
 	return { ok = ok, msg = msg }
 end
+
+actionRemote.OnServerInvoke = runAction
+
+-- Feeding is done at your own tank (F / prompt), not from a menu button
+WorldService.onFeed(function(player)
+	local result = runAction(player, "feed")
+	if result.msg and result.msg ~= "Slow down" then
+		notifyRemote:FireClient(player, result.msg)
+	end
+end)
 
 -- Fishing boat ------------------------------------------------------------
 local boatPrompt = BoatService.start({
@@ -171,6 +184,19 @@ boatPrompt.Triggered:Connect(function(player)
 	pushState(player, data, now)
 end)
 
+-- Robux shop --------------------------------------------------------------
+ShopService.start({
+	onChanged = function(player, msg)
+		local data = DataService.get(player)
+		if data then
+			pushState(player, data, os.time())
+		end
+		if msg then
+			notifyRemote:FireClient(player, msg)
+		end
+	end,
+})
+
 -- Player lifecycle --------------------------------------------------------
 local function onPlayerAdded(player: Player)
 	local data = DataService.load(player)
@@ -192,6 +218,10 @@ local function onPlayerAdded(player: Player)
 	leaderstats.Parent = player
 
 	WorldService.assign(player)
+	ShopService.refreshPasses(player, data) -- Auto-Feeder etc. (asks Roblox, yields)
+	if not player.Parent then
+		return
+	end
 	local now = os.time()
 	settleAndNotify(player, data, now)
 	pushState(player, data, now)

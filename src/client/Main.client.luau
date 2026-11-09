@@ -97,16 +97,69 @@ end
 -- Layout --------------------------------------------------------------------
 local gui = make("ScreenGui", { Name = "FishMarketUI", ResetOnSpawn = false, Parent = player:WaitForChild("PlayerGui") })
 
-local topBar = make("Frame", { BackgroundColor3 = C.panel, Position = UDim2.new(0.02, 0, 0, 8), Size = UDim2.new(0.96, 0, 0, 44), Parent = gui }, { corner() })
-local coinsLabel = label({ Font = FONT_BOLD, Text = "0 coins", Position = UDim2.new(0, 12, 0, 6), Size = UDim2.new(0.21, -12, 1, -12), MaxText = 24, Parent = topBar })
-local foodLabel = label({ Text = "", Position = UDim2.new(0.22, 0, 0, 6), Size = UDim2.new(0.28, 0, 1, -12), Parent = topBar })
-local feedButton = button({ Text = "Feed", Position = UDim2.new(0.5, 0, 0, 6), Size = UDim2.new(0.16, -6, 1, -12), Parent = topBar })
-local marketToggle = button({ Text = "Market", BackgroundColor3 = C.event, Position = UDim2.new(0.66, 0, 0, 6), Size = UDim2.new(0.16, -6, 1, -12), Parent = topBar })
-local tankToggle = button({ Text = "My Tank", BackgroundColor3 = C.event, Position = UDim2.new(0.82, 0, 0, 6), Size = UDim2.new(0.18, -6, 1, -12), Parent = topBar })
+-- Coins: top right, in the same row and pill shape as Roblox's own menu buttons (top left).
+-- Separate ScreenGui that ignores the top-bar inset so it can sit up in that row.
+local topGui = make("ScreenGui", { Name = "FishMarketTopUI", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = player:WaitForChild("PlayerGui") })
+local coinsBox = make("Frame", {
+	BackgroundColor3 = Color3.new(0, 0, 0),
+	BackgroundTransparency = 0.3,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -12, 0, 12),
+	Size = UDim2.new(0, 0, 0, 44),
+	AutomaticSize = Enum.AutomaticSize.X,
+	Parent = topGui,
+}, {
+	make("UICorner", { CornerRadius = UDim.new(1, 0) }), -- full pill, like the Roblox menu button
+	make("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 16) }),
+	make("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
+})
+-- coin icon drawn from shapes (emoji coins don't render in Roblox fonts)
+make("Frame", { LayoutOrder = 1, BackgroundColor3 = Color3.fromRGB(245, 190, 40), Size = UDim2.new(0, 30, 0, 30), Parent = coinsBox }, {
+	make("UICorner", { CornerRadius = UDim.new(1, 0) }),
+	make("UIStroke", { Color = Color3.fromRGB(190, 130, 20), Thickness = 2 }),
+	make("Frame", { BackgroundColor3 = Color3.fromRGB(255, 220, 90), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.62, 0.62) }, {
+		make("UICorner", { CornerRadius = UDim.new(1, 0) }),
+	}),
+})
+local coinsLabel = make("TextLabel", {
+	LayoutOrder = 2,
+	BackgroundTransparency = 1,
+	Font = FONT_BOLD,
+	Text = "0",
+	TextSize = 22,
+	TextColor3 = C.text,
+	Size = UDim2.new(0, 0, 0, 30),
+	AutomaticSize = Enum.AutomaticSize.X,
+	Parent = coinsBox,
+})
+
+-- Food status lives on each tank's front glass (see renderFoodGauges); feed at the tank with F.
+
+-- Market / My Tank: round icon buttons, middle of the left side
+local function iconButton(icon: string, caption: string, yOffset: number)
+	local holder = make("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, yOffset), Size = UDim2.new(0, 68, 0, 86), Parent = gui })
+	local b = make("TextButton", {
+		Text = icon,
+		Font = FONT_BOLD,
+		TextScaled = true,
+		TextColor3 = C.text,
+		AutoButtonColor = true,
+		BackgroundColor3 = C.event,
+		Size = UDim2.new(0, 68, 0, 68),
+		Parent = holder,
+	}, { make("UICorner", { CornerRadius = UDim.new(1, 0) }), make("UIStroke", { Color = C.text, Thickness = 2, Transparency = 0.4 }), make("UIPadding", { PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12), PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }) })
+	label({ Font = FONT_BOLD, Text = caption, TextXAlignment = Enum.TextXAlignment.Center, TextStrokeTransparency = 0.4, Position = UDim2.new(0, -6, 0, 70), Size = UDim2.new(1, 12, 0, 16), MaxText = 14, Parent = holder })
+	return b
+end
+local marketToggle = iconButton("🛒", "Market", -100)
+local tankToggle = iconButton("🐟", "My Tank", 0)
+local shopToggle = iconButton("R$", "Shop", 100)
+shopToggle.BackgroundColor3 = Color3.fromRGB(40, 160, 90)
 
 
-local function panel(x: number, title: string)
-	local frame = make("Frame", { BackgroundColor3 = C.panel, Position = UDim2.new(x, 0, 0, 92), Size = UDim2.new(0.47, 0, 1, -104), Parent = gui }, { corner() })
+-- x / leftOffset: the market panel starts right of the icon buttons
+local function panel(x: number, leftOffset: number, title: string)
+	local frame = make("Frame", { BackgroundColor3 = C.panel, Position = UDim2.new(x, leftOffset, 0, 64), Size = UDim2.new(0.47, -leftOffset, 1, -76), Parent = gui }, { corner() })
 	local titleLabel = label({ Font = FONT_BOLD, Text = title, Position = UDim2.new(0, 12, 0, 6), Size = UDim2.new(0.5, 0, 0, 28), MaxText = 22, Parent = frame })
 	local list = make("ScrollingFrame", {
 		BackgroundTransparency = 1,
@@ -120,11 +173,15 @@ local function panel(x: number, title: string)
 	return frame, titleLabel, list
 end
 
-local marketFrame, _, marketList = panel(0.02, "Fish Market")
-local tankFrame, tankTitle, tankList = panel(0.51, "Your Tank")
+local marketFrame, _, marketList = panel(0, 96, "Fish Market")
+local tankFrame, tankTitle, tankList = panel(0.51, 0, "Your Tank")
+local shopFrame, _, shopList = panel(0, 96, "Robux Shop")
 -- panels are pop-ups now so the 3D world stays visible
 marketFrame.Visible = false
 tankFrame.Visible = false
+shopFrame.Visible = false
+-- only a few items: a short window instead of a full-height one
+shopFrame.Size = UDim2.new(0.47, -96, 0, 64 + #Config.ROBUX * 90)
 local sellAllButton = button({ Text = "Sell all adults", Position = UDim2.new(0.5, 0, 0, 6), Size = UDim2.new(0.27, -4, 0, 28), Parent = tankFrame })
 local slotButton = button({ Text = "+ Slot", Position = UDim2.new(0.77, 0, 0, 6), Size = UDim2.new(0.23, -8, 0, 28), Parent = tankFrame })
 
@@ -177,9 +234,6 @@ local function act(action: string, arg)
 	end
 end
 
-feedButton.Activated:Connect(function()
-	act("feed")
-end)
 sellAllButton.Activated:Connect(function()
 	act("sellAllAdults")
 end)
@@ -188,6 +242,11 @@ slotButton.Activated:Connect(function()
 end)
 marketToggle.Activated:Connect(function()
 	marketFrame.Visible = not marketFrame.Visible
+	shopFrame.Visible = false -- same spot on screen
+end)
+shopToggle.Activated:Connect(function()
+	shopFrame.Visible = not shopFrame.Visible
+	marketFrame.Visible = false
 end)
 tankToggle.Activated:Connect(function()
 	tankFrame.Visible = not tankFrame.Visible
@@ -331,21 +390,8 @@ local function renderTank()
 		return
 	end
 	local now = serverNow()
-	coinsLabel.Text = fmt(tank.coins) .. " coins"
+	coinsLabel.Text = fmt(tank.coins)
 
-	local fedLeft = tank.fedUntil - now
-	if #tank.fish == 0 then
-		foodLabel.Text = "Buy an egg to start"
-		foodLabel.TextColor3 = C.dim
-	elseif fedLeft > 0 then
-		foodLabel.Text = "Food: " .. fmtTime(fedLeft)
-		foodLabel.TextColor3 = if fedLeft < Config.real(3600) then C.warn else C.text
-	else
-		foodLabel.Text = "HUNGRY! Fish stopped growing"
-		foodLabel.TextColor3 = C.down
-	end
-	feedButton.Text = if #tank.fish == 0 then "Feed" elseif tank.feedCost > 0 then ("Feed (%s)"):format(fmt(tank.feedCost)) else "Food full"
-	feedButton.BackgroundColor3 = if tank.feedCost > 0 and #tank.fish > 0 then C.button else C.buttonOff
 
 	tankTitle.Text = ("Your Tank %d/%d"):format(#tank.fish, tank.slots)
 	slotButton.Text = if tank.slots >= tank.maxSlots then "Max" else ("+Slot %s"):format(fmt(tank.slotCost))
@@ -363,7 +409,8 @@ local function renderTank()
 		if species then
 			local growEnd = math.min(now, tank.fedUntil)
 			if growEnd > tank.now then
-				age = math.min(age + (growEnd - tank.now) * Config.TIME_SCALE / species.growSeconds, Config.MAX_AGE)
+				local boosted = math.max(0, math.min(growEnd, tank.boostUntil or 0) - tank.now)
+				age = math.min(age + ((growEnd - tank.now) + boosted * (Config.GROW_BOOST_MULT - 1)) * Config.TIME_SCALE / species.growSeconds, Config.MAX_AGE)
 			end
 		end
 
@@ -404,6 +451,69 @@ local function renderTank()
 	end
 end
 
+-- Robux shop ----------------------------------------------------------------
+-- Roblox shows its own purchase window; the server gives the item (server/ShopService).
+local MarketplaceService = game:GetService("MarketplaceService")
+local shopCards = {}
+
+for i, item in Config.ROBUX do
+	local card = make("Frame", { LayoutOrder = i, BackgroundColor3 = C.row, Size = UDim2.new(1, -6, 0, 84), Parent = shopList }, { corner(6) })
+	label({ Font = FONT_BOLD, Text = item.name, Position = UDim2.new(0, 12, 0, 6), Size = UDim2.new(0.68, -12, 0, 24), MaxText = 20, Parent = card })
+	local info = label({ Text = item.text, TextColor3 = C.dim, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.new(0, 12, 0, 32), Size = UDim2.new(0.68, -12, 0, 44), MaxText = 15, Parent = card })
+	local buy = button({ Text = "...", BackgroundColor3 = Color3.fromRGB(40, 160, 90), Position = UDim2.new(0.7, 0, 0, 18), Size = UDim2.new(0.3, -10, 0, 48), Parent = card })
+	local cardState = { item = item, info = info, buy = buy, price = nil }
+	shopCards[item.key] = cardState
+
+	if item.id ~= 0 then
+		task.spawn(function()
+			local infoType = if item.kind == "pass" then Enum.InfoType.GamePass else Enum.InfoType.Product
+			local ok, product = pcall(MarketplaceService.GetProductInfo, MarketplaceService, item.id, infoType)
+			if ok and product and product.PriceInRobux then
+				cardState.price = product.PriceInRobux
+			end
+		end)
+	end
+
+	buy.Activated:Connect(function()
+		if item.id == 0 then
+			showToast("This item is not set up yet")
+		elseif item.kind == "pass" then
+			if tank and tank[item.key] then
+				showToast("You already own " .. item.name)
+			else
+				MarketplaceService:PromptGamePassPurchase(player, item.id)
+			end
+		else
+			MarketplaceService:PromptProductPurchase(player, item.id)
+		end
+	end)
+end
+
+local function renderShop()
+	local now = serverNow()
+	for key, card in shopCards do
+		local item = card.item
+		local owned = item.kind == "pass" and tank ~= nil and tank[key] == true
+		if item.id == 0 then
+			card.buy.Text = "Not set up"
+			card.buy.BackgroundColor3 = C.buttonOff
+		elseif owned then
+			card.buy.Text = "Owned ✓"
+			card.buy.BackgroundColor3 = C.buttonOff
+		else
+			card.buy.Text = if card.price then ("R$ %d"):format(card.price) else "Buy"
+			card.buy.BackgroundColor3 = Color3.fromRGB(40, 160, 90)
+		end
+		if key == "growBoost" and tank and (tank.boostUntil or 0) > now then
+			card.info.Text = "ACTIVE: " .. fmtTime(tank.boostUntil - now) .. " left. Buy again to add time."
+			card.info.TextColor3 = C.up
+		else
+			card.info.Text = item.text
+			card.info.TextColor3 = C.dim
+		end
+	end
+end
+
 Remotes:WaitForChild("State").OnClientEvent:Connect(function(payload)
 	tank = payload
 	tankAt = os.clock()
@@ -425,9 +535,76 @@ require(script.Parent:WaitForChild("FishRenderer")).start()
 require(script.Parent:WaitForChild("Seagulls")).start()
 require(script.Parent:WaitForChild("BoatRenderer")).start()
 
+-- Feed prompts: only show the one on MY tank (each client hides the others locally)
+local function updateFeedPrompts()
+	local plotsFolder = workspace:FindFirstChild("FishWorld") and workspace.FishWorld:FindFirstChild("Plots")
+	if not plotsFolder then
+		return
+	end
+	for _, plot in plotsFolder:GetChildren() do
+		local feedPrompt = plot:FindFirstChild("FeedPrompt", true)
+		if feedPrompt then
+			local mine = plot:GetAttribute("OwnerId") == player.UserId
+			if feedPrompt.Enabled ~= mine then
+				feedPrompt.Enabled = mine
+			end
+		end
+	end
+end
+
+-- Food gauge on the bottom of every tank's glass (everyone sees everyone's food)
+local MAX_FOOD = Config.real(Config.MAX_FEED_HOURS * 3600)
+local LOW_FOOD = Config.real(3600)
+local function renderFoodGauges()
+	local plotsFolder = workspace:FindFirstChild("FishWorld") and workspace.FishWorld:FindFirstChild("Plots")
+	if not plotsFolder then
+		return
+	end
+	local now = serverNow()
+	for _, plot in plotsFolder:GetChildren() do
+		local strip = plot:FindFirstChild("Strip", true)
+		if not strip then
+			continue
+		end
+		local mine = plot:GetAttribute("OwnerId") == player.UserId
+		local fishCount = plot:GetAttribute("FishCount") or 0
+		local fedLeft = (plot:GetAttribute("FedUntil") or 0) - now
+		local fill, text = strip.Fill, strip.Text
+		if (plot:GetAttribute("OwnerId") or 0) == 0 or (fishCount == 0 and not mine) then
+			strip.Visible = false
+		elseif fishCount == 0 then
+			strip.Visible = true
+			fill.Size = UDim2.fromScale(0, 1)
+			text.Text = "Empty: buy an egg at the Market"
+			text.TextColor3 = C.dim
+		elseif plot:GetAttribute("AutoFeeder") then
+			strip.Visible = true
+			fill.Size = UDim2.fromScale(1, 1)
+			fill.BackgroundColor3 = C.up
+			text.Text = "Auto-Feeder: always full"
+			text.TextColor3 = C.text
+		elseif fedLeft > 0 then
+			strip.Visible = true
+			local low = fedLeft < LOW_FOOD
+			fill.Size = UDim2.fromScale(math.clamp(fedLeft / MAX_FOOD, 0.04, 1), 1)
+			fill.BackgroundColor3 = if low then C.warn else C.up
+			text.Text = "Food " .. fmtTime(fedLeft) .. (if low and mine then " · press F" else "")
+			text.TextColor3 = C.text
+		else
+			strip.Visible = true
+			fill.Size = UDim2.fromScale(0, 1)
+			text.Text = if mine then "HUNGRY! Press F to feed" else "HUNGRY!"
+			text.TextColor3 = C.down
+		end
+	end
+end
+
 -- smooth countdowns between server updates
 while true do
 	task.wait(0.5)
+	updateFeedPrompts()
+	renderFoodGauges()
+	renderShop()
 	renderTank()
 	renderMarket()
 end

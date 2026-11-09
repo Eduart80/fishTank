@@ -99,6 +99,39 @@ local function buildTank(index: number, cf: CFrame, parent: Instance)
 		return part(props)
 	end
 	local front = pane("GlassFront", Vector3.new(TANK_W + 0.8, TANK_H, 0.4), CFrame.new(0, midY, -(TANK_D / 2 + 0.2)))
+
+	-- Food gauge on the bottom of the front glass. Clients fill it in every frame-ish from the
+	-- plot's FedUntil / FishCount attributes (smooth countdown, no server text updates).
+	local foodGui = Instance.new("SurfaceGui")
+	foodGui.Name = "FoodGui"
+	foodGui.Face = Enum.NormalId.Front
+	foodGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	foodGui.PixelsPerStud = 40
+	foodGui.LightInfluence = 0
+	foodGui.MaxDistance = 90
+	foodGui.Parent = front
+	local strip = Instance.new("Frame")
+	strip.Name = "Strip"
+	strip.AnchorPoint = Vector2.new(0.5, 1)
+	strip.Position = UDim2.fromScale(0.5, 0.97)
+	strip.Size = UDim2.fromScale(0.8, 0.12)
+	strip.BackgroundColor3 = Color3.fromRGB(14, 28, 44)
+	strip.BackgroundTransparency = 0.15
+	strip.Visible = false
+	strip.Parent = foodGui
+	Instance.new("UICorner", strip).CornerRadius = UDim.new(1, 0)
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.fromScale(0, 1)
+	fill.BackgroundColor3 = COLORS.up
+	fill.BorderSizePixel = 0
+	fill.Parent = strip
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+	local foodText = textLabel({ Name = "Text", Size = UDim2.fromScale(1, 1), Text = "", TextStrokeTransparency = 0.3, ZIndex = 2, Parent = strip })
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0.12, 0)
+	pad.PaddingBottom = UDim.new(0.12, 0)
+	pad.Parent = foodText
 	pane("GlassBack", Vector3.new(TANK_W + 0.8, TANK_H, 0.4), CFrame.new(0, midY, TANK_D / 2 + 0.2))
 	pane("GlassLeft", Vector3.new(0.4, TANK_H, TANK_D), CFrame.new(-(TANK_W / 2 + 0.2), midY, 0))
 	pane("GlassRight", Vector3.new(0.4, TANK_H, TANK_D), CFrame.new(TANK_W / 2 + 0.2, midY, 0))
@@ -131,6 +164,18 @@ local function buildTank(index: number, cf: CFrame, parent: Instance)
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = front
 
+	-- Feeding happens AT the tank. Every client hides this prompt on tanks that aren't theirs.
+	local feedPrompt = Instance.new("ProximityPrompt")
+	feedPrompt.Name = "FeedPrompt"
+	feedPrompt.ActionText = "Feed fish"
+	feedPrompt.ObjectText = "Food"
+	feedPrompt.KeyboardKeyCode = Enum.KeyCode.F
+	feedPrompt.GamepadKeyCode = Enum.KeyCode.ButtonY
+	feedPrompt.MaxActivationDistance = 12
+	feedPrompt.RequiresLineOfSight = false
+	feedPrompt.UIOffset = Vector2.new(0, 80) -- sits under the Open Tank prompt
+	feedPrompt.Parent = front
+
 	local fishValue = Instance.new("StringValue")
 	fishValue.Name = "FishData"
 	fishValue.Value = "[]"
@@ -146,6 +191,7 @@ local function buildTank(index: number, cf: CFrame, parent: Instance)
 		fishValue = fishValue,
 		label = label,
 		prompt = prompt,
+		feedPrompt = feedPrompt,
 		lastJson = "[]",
 	}
 end
@@ -393,7 +439,40 @@ function WorldService.release(player: Player)
 	plot.label.Text = "Empty tank"
 	plot.prompt.ObjectText = "Empty"
 	plot.fishValue.Value = "[]"
+	plot.model:SetAttribute("FedUntil", 0)
+	plot.model:SetAttribute("FishCount", 0)
+	plot.model:SetAttribute("AutoFeeder", false)
 	plot.lastJson = "[]"
+end
+
+-- Feed prompt text on the player's own tank (cost of filling the food up).
+function WorldService.updateFeedPrompt(player: Player, state)
+	local plot = plotOf[player]
+	if not plot then
+		return
+	end
+	local text = if state.autoFeeder then "Auto-Feeder is on"
+		elseif #state.fish == 0 then "Feed (no fish yet)"
+		elseif state.feedCost > 0 then ("Feed fish (%d coins)"):format(state.feedCost)
+		else "Food is full"
+	if plot.feedPrompt.ActionText ~= text then
+		plot.feedPrompt.ActionText = text
+	end
+	-- for the food gauge on the glass (drawn by clients)
+	plot.model:SetAttribute("FedUntil", state.fedUntil)
+	plot.model:SetAttribute("FishCount", #state.fish)
+	plot.model:SetAttribute("AutoFeeder", state.autoFeeder)
+end
+
+-- callback(player) when a player feeds at THEIR OWN tank.
+function WorldService.onFeed(callback)
+	for _, plot in plots do
+		plot.feedPrompt.Triggered:Connect(function(player)
+			if plot.owner == player then
+				callback(player)
+			end
+		end)
+	end
 end
 
 -- Publishes the visible fish list for this player's tank (only if it changed).

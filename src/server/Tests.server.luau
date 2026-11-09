@@ -425,6 +425,29 @@ test("Expensive fish events are capped at x2", function(check)
 	check(Config.ById.tuna.maxEventMult == 2 and Config.ById.koi.maxEventMult == 2, "cap missing")
 end)
 
+-- Robux items -------------------------------------------------------------
+test("Auto-Feeder: fish never starve, even a week offline", function(check)
+	local d = newPlayer(now)
+	d.autoFeeder = true
+	d.fedUntil = now
+	addFish(d, "guppy", 0, now)
+	local died = TankService.settle(d, later(now, 24 * 7))
+	check(#died == 0, "fish died with Auto-Feeder")
+	check(d.fish[1] and d.fish[1].age > 1, "fish didn't grow")
+end)
+
+test("Grow Boost: fish grow 2x during the boost, normal after", function(check)
+	local a, b = newPlayer(now), newPlayer(now)
+	a.fedUntil, b.fedUntil = later(now, 12), later(now, 12)
+	local fa = addFish(a, "salmon", 0, now)
+	local fb = addFish(b, "salmon", 0, now)
+	b.boostUntil = later(now, 1)
+	TankService.settle(a, later(now, 2))
+	TankService.settle(b, later(now, 2))
+	-- b: 1h boosted (counts 2h) + 1h normal = 3h of growth vs 2h for a
+	check(math.abs(fb.age / fa.age - 1.5) < 0.01, ("normal %.3f vs boosted %.3f"):format(fa.age, fb.age))
+end)
+
 -- Done --------------------------------------------------------------------
 MarketService._restoreForTests(marketBackup)
 print("─────────────────────────────────────────────")

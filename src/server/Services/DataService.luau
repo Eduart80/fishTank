@@ -111,24 +111,36 @@ function DataService.get(player: Player)
 	return profile and profile.data
 end
 
-local function save(player: Player, release: boolean)
+-- Returns true when the data is safely stored (or saving is off, e.g. Studio without API access).
+local function save(player: Player, release: boolean): boolean
 	local profile = profiles[player]
-	if not profile or not profile.saveEnabled then
-		return
+	if not profile then
+		return false
+	end
+	if not profile.saveEnabled then
+		return true
 	end
 	local data = profile.data
+	local written = false
 	local ok, err = pcall(function()
 		store:UpdateAsync(keyFor(player), function(old)
 			if type(old) == "table" and old.lock and old.lock.job ~= game.JobId then
 				return nil -- another server took over this session; never overwrite it
 			end
 			data.lock = if release then nil else { job = game.JobId, time = os.time() }
+			written = true
 			return data
 		end)
 	end)
 	if not ok then
 		warn(("[Data] save failed for %s: %s"):format(player.Name, tostring(err)))
 	end
+	return ok and written
+end
+
+-- Save right now (used after Robux purchases, so a paid item is never lost). Yields.
+function DataService.saveNow(player: Player): boolean
+	return save(player, false)
 end
 
 function DataService.release(player: Player)

@@ -21,6 +21,11 @@ end
 
 -- Advance every fish to `now`. Fish only grow while fed. Returns the list of fish that died.
 function TankService.settle(data, now: number)
+	-- Auto-Feeder (Robux pass): food never runs out, also across offline time
+	if data.autoFeeder then
+		data.fedUntil = math.max(data.fedUntil, now + Config.real(Config.MAX_FEED_HOURS * 3600))
+	end
+	local boostUntil = data.boostUntil or 0
 	local died = {}
 	local alive = {}
 	for _, fish in data.fish do
@@ -31,7 +36,10 @@ function TankService.settle(data, now: number)
 		end
 		local growEnd = math.min(now, data.fedUntil)
 		if growEnd > fish.lastUpdate then
-			local grown = (growEnd - fish.lastUpdate) * Config.TIME_SCALE / species.growSeconds
+			-- Grow Boost (Robux): the part of this stretch inside the boost counts GROW_BOOST_MULT times
+			local boosted = math.max(0, math.min(growEnd, boostUntil) - fish.lastUpdate)
+			local effective = (growEnd - fish.lastUpdate) + boosted * (Config.GROW_BOOST_MULT - 1)
+			local grown = effective * Config.TIME_SCALE / species.growSeconds
 			fish.age = math.min(fish.age + grown, Config.MAX_AGE)
 		end
 		fish.lastUpdate = now
@@ -244,6 +252,8 @@ function TankService.publicState(data, now: number)
 		feedCost = math.ceil(perHour * missingHours),
 		fish = fishList,
 		stats = data.stats,
+		autoFeeder = data.autoFeeder == true,
+		boostUntil = data.boostUntil or 0,
 	}
 end
 

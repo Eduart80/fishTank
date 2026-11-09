@@ -62,6 +62,16 @@ Config.BOAT = {
 	priceMax = 1.3,
 }
 
+-- Robux shop. id = 0 means "not created yet" (button shows "Not set up").
+-- Create items on create.roblox.com -> your experience -> Monetization, then paste the ids here.
+--   kind "pass"    = Game Pass, bought once, kept forever
+--   kind "product" = Developer Product, can be bought again and again
+Config.GROW_BOOST_MULT = 2
+Config.ROBUX = {
+	{ key = "autoFeeder", kind = "pass", id = 2076124464, name = "Auto-Feeder", text = "Your fish never go hungry, even while you are offline." },
+	{ key = "growBoost", kind = "product", id = 3729887473, name = "Grow Boost (1 hour)", text = "All your fish grow 2x faster for 1 hour. Buy again to add time.", seconds = 3600 },
+}
+
 -- Studio only: run the scenario tests (server/Tests) every time you press Play. Never runs live.
 Config.RUN_TESTS_IN_STUDIO = true
 
