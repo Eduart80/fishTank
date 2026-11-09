@@ -66,10 +66,12 @@ Rules:
 | 1 | **Auto-Feeder** (Game Pass) | Fear of losing fish — strongest reason in this game |
 | 2 | **Grow boost 2×/1h** (Dev Product), **+Tank slots** (capped) | Impatience |
 | 3 | **Premium Payouts** | Free — paid by Roblox for daily returning Premium players |
-| 4 | **Starter pack** (once, small) | First purchase; payers pay again |
+| 4 | **Starter pack** (once, small) — ⬜ NEXT, before launch: ~R$ 99, once per player = 500 coins + Beach Umbrella + 1 Clownfish egg. Developer Product, granted via ShopService (saved before PurchaseGranted), flag `data.starterPack` blocks a 2nd buy, hidden in the shop once owned | First purchase; payers pay again |
 | 5 | Cosmetics — only **visible/social** ones (tank themes, title above head, Most Beautiful Tank) | Bonus income only |
 
 Never: big coin packs, gear that catches better fish (paid players would wreck the shared market).
+Maybe later (only after playtest + analytics show the market is healthy): small coin packs, capped
+(e.g. 1,000 coins, max 1 per day), or Robux tank slots capped at +2. Decided 2026-11-09.
 
 ## Will players come back? — measure, don't guess
 
