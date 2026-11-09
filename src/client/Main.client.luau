@@ -8,6 +8,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local MarketMath = require(Shared:WaitForChild("MarketMath"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local actionRemote = Remotes:WaitForChild("Action")
 
@@ -103,8 +104,6 @@ local feedButton = button({ Text = "Feed", Position = UDim2.new(0.5, 0, 0, 6), S
 local marketToggle = button({ Text = "Market", BackgroundColor3 = C.event, Position = UDim2.new(0.66, 0, 0, 6), Size = UDim2.new(0.16, -6, 1, -12), Parent = topBar })
 local tankToggle = button({ Text = "My Tank", BackgroundColor3 = C.event, Position = UDim2.new(0.82, 0, 0, 6), Size = UDim2.new(0.18, -6, 1, -12), Parent = topBar })
 
-local eventBar = make("Frame", { BackgroundColor3 = C.event, Position = UDim2.new(0.02, 0, 0, 56), Size = UDim2.new(0.96, 0, 0, 30), Visible = false, Parent = gui }, { corner() })
-local eventLabel = label({ Font = FONT_BOLD, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 8, 0, 4), Size = UDim2.new(1, -16, 1, -8), Parent = eventBar })
 
 local function panel(x: number, title: string)
 	local frame = make("Frame", { BackgroundColor3 = C.panel, Position = UDim2.new(x, 0, 0, 92), Size = UDim2.new(0.47, 0, 1, -104), Parent = gui }, { corner() })
@@ -250,9 +249,6 @@ for i, species in Config.Species do
 	marketRows[species.id] = { price = price, change = change, bars = bars, buy = buy, growing = growing }
 end
 
-local EVENT_BANNER_SECONDS = 5
-local eventSeenKey = nil
-local eventHideAt = 0
 
 local function renderMarket()
 	if not market then
@@ -274,7 +270,9 @@ local function renderMarket()
 			row.buy.BackgroundColor3 = C.buttonOff
 		else
 			local eggPrice = (market.eggPrices and market.eggPrices[species.id]) or species.eggPrice
-			row.buy.Text = ("Egg %s%s"):format(fmt(eggPrice), if eggPrice > species.eggPrice then " ▲" else "")
+			local demand = (market.eggDemand and market.eggDemand[species.id]) or 0
+			local rising = eggPrice > species.eggPrice or demand >= MarketMath.EGG_DEMAND_MARKER
+			row.buy.Text = ("Egg %s%s"):format(fmt(eggPrice), if rising then " ▲" else "")
 			row.buy.BackgroundColor3 = C.button
 		end
 
@@ -305,20 +303,7 @@ local function renderMarket()
 		end
 	end
 
-	-- event banner: show for EVENT_BANNER_SECONDS when a new event starts, then hide
-	-- (the big market board in the plaza keeps showing it)
-	local event = market.event
-	if event and event.endsAt > serverNow() then
-		local key = event.title .. event.endsAt
-		if key ~= eventSeenKey then
-			eventSeenKey = key
-			eventHideAt = os.clock() + EVENT_BANNER_SECONDS
-		end
-		eventBar.Visible = os.clock() < eventHideAt
-		eventLabel.Text = ("%s: %s (%s left)"):format(event.title, event.text, fmtTime(event.endsAt - serverNow()))
-	else
-		eventBar.Visible = false
-	end
+	-- events are shown only on the plaza market board (with timer), no pop-up banner
 end
 
 -- Tank rows -----------------------------------------------------------------
@@ -438,6 +423,7 @@ end)
 
 require(script.Parent:WaitForChild("FishRenderer")).start()
 require(script.Parent:WaitForChild("Seagulls")).start()
+require(script.Parent:WaitForChild("BoatRenderer")).start()
 
 -- smooth countdowns between server updates
 while true do

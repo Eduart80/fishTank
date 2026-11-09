@@ -16,6 +16,10 @@ local MarketMath = require(Shared.MarketMath)
 local MarketService = {}
 
 local SYNC_INTERVAL = 30
+local ORDER_SYNC_INTERVAL = 5 -- event orders are a race, keep servers closer in step
+-- Server-only secret for the event schedule (server scripts never reach players' computers).
+-- Same number on every server so they all agree. Keep the GitHub repo private.
+local EVENT_SECRET = 48611
 local KEY_EXPIRY = 7 * 24 * 3600
 local CHANNELS = { "sell", "egg", "hatch" }
 -- Studio gets its own market so test dumps never touch the live one
@@ -57,13 +61,51 @@ local function pressureOf(id: string, channel: string, now: number): number
 end
 
 function MarketService.currentEvent(now: number)
-	return MarketMath.eventAt(now, #Config.Species)
+	return MarketMath.eventAt(now, #Config.Species, EVENT_SECRET)
+end
+
+-- Chef / Festival orders: the bonus price only applies to the first orderSize fish sold
+-- (all servers together). order = { key, global = filled on other syncs, pending = sold here, unsynced }
+local order = { key = nil, global = 0, pending = 0 }
+
+-- Returns the limited order running right now: event, species, size. Nil if none.
+local function activeOrder(now: number)
+	local event = MarketService.currentEvent(now)
+	if not event or not event.speciesIndex or event.def.mult <= 1 then
+		return nil
+	end
+	local species = Config.Species[event.speciesIndex]
+	local key = "order_" .. event.startsAt
+	if order.key ~= key then
+		order = { key = key, global = 0, pending = 0 }
+	end
+	return event, species, species.orderSize or 10
+end
+
+local function orderLeft(now: number): number?
+	local _, _, size = activeOrder(now)
+	if not size then
+		return nil
+	end
+	return math.max(0, size - order.global - order.pending)
+end
+
+-- Event multiplier for one species: capped for expensive fish, back to 1 once the order is full.
+local function eventMultFor(species, now: number): number
+	local event = MarketService.currentEvent(now)
+	local mult = MarketMath.eventMult(event, species.index)
+	if mult > 1 then
+		mult = math.min(mult, species.maxEventMult or mult)
+		if event.speciesIndex == species.index and (orderLeft(now) or 0) <= 0 then
+			mult = 1
+		end
+	end
+	return mult
 end
 
 function MarketService.getPrice(id: string, now: number): number
 	local species = Config.ById[id]
-	local mult = MarketMath.eventMult(MarketService.currentEvent(now), species.index)
-	return MarketMath.price(species, now, pressureOf(id, "sell", now), mult)
+	return MarketMath.price(species, now, pressureOf(id, "sell", now), eventMultFor(species, now))
 end
 
 function MarketService.getEggPrice(id: string, now: number): number
@@ -83,10 +125,25 @@ end
 -- Sells fish of one species (list of sizes). Returns gross coins before the market fee.
 function MarketService.sell(id: string, sizes: { number }, now: number): number
 	local species = Config.ById[id]
-	local mult = MarketMath.eventMult(MarketService.currentEvent(now), species.index)
-	local gross, added = MarketMath.quoteSale(species, now, pressureOf(id, "sell", now), mult, sizes)
-	state[id].sell.pending += added
-	return gross
+	local mult = eventMultFor(species, now)
+	local pressure = pressureOf(id, "sell", now)
+	local _, orderSpecies = activeOrder(now)
+	if mult == 1 or orderSpecies ~= species then
+		local gross, added = MarketMath.quoteSale(species, now, pressure, mult, sizes)
+		state[id].sell.pending += added
+		return gross
+	end
+	-- limited order: only the fish still left in the order get the bonus, the rest normal price
+	local bonusCount = math.min(#sizes, orderLeft(now) or 0)
+	local bonusSizes, normalSizes = {}, {}
+	for i, size in sizes do
+		table.insert(if i <= bonusCount then bonusSizes else normalSizes, size)
+	end
+	local gross1, added1 = MarketMath.quoteSale(species, now, pressure, mult, bonusSizes)
+	local gross2, added2 = MarketMath.quoteSale(species, now, pressure + added1, 1, normalSizes)
+	order.pending += bonusCount
+	state[id].sell.pending += added1 + added2
+	return gross1 + gross2
 end
 
 local function syncChannel(id: string, channel: string, now: number)
@@ -120,6 +177,31 @@ local function syncChannel(id: string, channel: string, now: number)
 	st.pending -= pending
 end
 
+local function syncOrder()
+	local key, pending = order.key, order.pending
+	if not key then
+		return
+	end
+	if map then
+		local ok, result = pcall(function()
+			return map:UpdateAsync(key, function(old)
+				return (if type(old) == "number" then old else 0) + pending
+			end, 2 * 3600)
+		end)
+		if ok and type(result) == "number" then
+			if order.key == key then
+				order.global = result
+				order.pending -= pending
+			end
+			return
+		end
+	end
+	if order.key == key then -- local-only fallback
+		order.global += pending
+		order.pending -= pending
+	end
+end
+
 local function syncAll(now: number)
 	for _, species in Config.Species do
 		for _, channel in CHANNELS do
@@ -139,21 +221,31 @@ local function recordHistory(now: number)
 end
 
 function MarketService.snapshot(now: number)
-	local prices, eggPrices, growing = {}, {}, {}
+	local prices, eggPrices, growing, eggDemand = {}, {}, {}, {}
 	for _, species in Config.Species do
 		prices[species.id] = MarketService.getPrice(species.id, now)
 		eggPrices[species.id] = MarketService.getEggPrice(species.id, now)
 		growing[species.id] = math.floor(MarketService.getGrowing(species.id, now) + 0.5)
+		eggDemand[species.id] = pressureOf(species.id, "egg", now)
 	end
 	local event = MarketService.currentEvent(now)
 	local eventInfo = nil
 	if event then
-		local fishName = if event.speciesIndex then Config.Species[event.speciesIndex].name else ""
+		local species = if event.speciesIndex then Config.Species[event.speciesIndex] else nil
+		local mult = event.def.mult
+		if species and mult > 1 then
+			mult = math.min(mult, species.maxEventMult or mult)
+		end
+		local text = string.gsub(event.def.text, "{fish}", if species then species.name else "")
+		text = string.gsub(text, "{mult}", tostring(mult))
+		local _, _, size = activeOrder(now)
 		eventInfo = {
 			title = event.def.title,
-			text = (string.gsub(event.def.text, "{fish}", fishName)),
-			speciesId = if event.speciesIndex then Config.Species[event.speciesIndex].id else nil,
+			text = text,
+			speciesId = if species then species.id else nil,
 			endsAt = event.endsAt,
+			orderSize = size,
+			orderLeft = orderLeft(now),
 		}
 	end
 	return {
@@ -161,6 +253,7 @@ function MarketService.snapshot(now: number)
 		prices = prices,
 		eggPrices = eggPrices,
 		growing = growing,
+		eggDemand = eggDemand,
 		history = history,
 		event = eventInfo,
 		fee = Config.MARKET_FEE,
@@ -211,6 +304,15 @@ function MarketService.start()
 		while true do
 			task.wait(SYNC_INTERVAL)
 			syncAll(os.time())
+		end
+	end)
+
+	task.spawn(function()
+		while true do
+			task.wait(ORDER_SYNC_INTERVAL)
+			if activeOrder(os.time()) then
+				syncOrder()
+			end
 		end
 	end)
 

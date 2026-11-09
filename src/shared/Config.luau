@@ -33,14 +33,16 @@ Config.MAX_AGE = 1 + Config.EXTRA_GROWTH_PERIODS
 -- growSeconds / starveHours are game time (divided by TIME_SCALE for real time).
 -- liquidity = how many fish-units the whole market absorbs before price drops ~50%.
 -- unlockEarned = lifetime coins earned from selling before this egg can be bought.
+-- orderSize = how many fish a Chef/Festival event buys at the bonus price (all servers together).
+-- maxEventMult = cap on bonus events for expensive fish (a x3 Koi would skip days of progress).
 -- Tuned 2026-11-08 by progression sim: casual player reaches Koi ~day 15, heavy player ~day 11
 -- (old numbers: everything unlocked by day 3). Re-tune with real playtest data.
 Config.Species = {
-	{ id = "guppy", name = "Guppy", eggPrice = 10, basePrice = 15, growSeconds = 10 * 60, starveHours = 12, feedPerHour = 1, liquidity = 300, unlockEarned = 0, color = Color3.fromRGB(255, 170, 60) },
-	{ id = "clownfish", name = "Clownfish", eggPrice = 40, basePrice = 62, growSeconds = 45 * 60, starveHours = 18, feedPerHour = 1, liquidity = 120, unlockEarned = 150, color = Color3.fromRGB(255, 110, 40) },
-	{ id = "salmon", name = "Salmon", eggPrice = 150, basePrice = 235, growSeconds = 3 * 3600, starveHours = 24, feedPerHour = 2, liquidity = 50, unlockEarned = 1500, color = Color3.fromRGB(250, 128, 114) },
-	{ id = "tuna", name = "Tuna", eggPrice = 500, basePrice = 800, growSeconds = 8 * 3600, starveHours = 36, feedPerHour = 4, liquidity = 20, unlockEarned = 8000, color = Color3.fromRGB(90, 140, 220) },
-	{ id = "koi", name = "Koi", eggPrice = 2000, basePrice = 3300, growSeconds = 20 * 3600, starveHours = 48, feedPerHour = 10, liquidity = 8, unlockEarned = 30000, color = Color3.fromRGB(245, 245, 245) },
+	{ id = "guppy", name = "Guppy", eggPrice = 10, basePrice = 15, growSeconds = 10 * 60, starveHours = 12, feedPerHour = 1, liquidity = 300, unlockEarned = 0, orderSize = 12, color = Color3.fromRGB(255, 170, 60) },
+	{ id = "clownfish", name = "Clownfish", eggPrice = 40, basePrice = 62, growSeconds = 45 * 60, starveHours = 18, feedPerHour = 1, liquidity = 120, unlockEarned = 150, orderSize = 8, color = Color3.fromRGB(255, 110, 40) },
+	{ id = "salmon", name = "Salmon", eggPrice = 150, basePrice = 235, growSeconds = 3 * 3600, starveHours = 24, feedPerHour = 2, liquidity = 50, unlockEarned = 1500, orderSize = 5, color = Color3.fromRGB(250, 128, 114) },
+	{ id = "tuna", name = "Tuna", eggPrice = 500, basePrice = 800, growSeconds = 8 * 3600, starveHours = 36, feedPerHour = 4, liquidity = 20, unlockEarned = 8000, orderSize = 3, maxEventMult = 2, color = Color3.fromRGB(90, 140, 220) },
+	{ id = "koi", name = "Koi", eggPrice = 2000, basePrice = 3300, growSeconds = 20 * 3600, starveHours = 48, feedPerHour = 10, liquidity = 8, unlockEarned = 30000, orderSize = 2, maxEventMult = 2, color = Color3.fromRGB(245, 245, 245) },
 }
 
 -- If a player has no fish and can't afford the cheapest egg, top them up to this (no permanent soft-lock).
@@ -50,6 +52,15 @@ Config.RESCUE_COINS = 20
 -- Seagull squawk: paste a Roblox audio id from the Studio Toolbox, e.g. "rbxassetid://1234567".
 -- Empty = silent gulls.
 Config.SEAGULL_SOUND_ID = "rbxassetid://9118858002"
+
+-- Fishing boat visitor (server/BoatService). Studio comes much more often so you can test it.
+Config.BOAT = {
+	intervalMin = if RunService:IsStudio() then 45 else 15 * 60, -- real seconds between visits
+	intervalMax = if RunService:IsStudio() then 90 else 25 * 60,
+	staySeconds = if RunService:IsStudio() then 120 else 4 * 60,
+	priceMin = 0.75, -- offer = market price x random(priceMin..priceMax): check the board before selling!
+	priceMax = 1.3,
+}
 
 -- Studio only: run the scenario tests (server/Tests) every time you press Play. Never runs live.
 Config.RUN_TESTS_IN_STUDIO = true

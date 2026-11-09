@@ -11,6 +11,7 @@ local MarketService = require(Services.MarketService)
 local TankService = require(Services.TankService)
 local WorldService = require(Services.WorldService)
 local AnalyticsTracker = require(Services.AnalyticsTracker)
+local BoatService = require(Services.BoatService)
 
 local TICK = 5
 local ACTION_COOLDOWN = 0.15
@@ -130,6 +131,45 @@ actionRemote.OnServerInvoke = function(player: Player, action, arg)
 	pushState(player, data, now)
 	return { ok = ok, msg = msg }
 end
+
+-- Fishing boat ------------------------------------------------------------
+local boatPrompt = BoatService.start({
+	getOnlineData = function()
+		local list = {}
+		for _, player in Players:GetPlayers() do
+			local data = DataService.get(player)
+			if data then
+				table.insert(list, data)
+			end
+		end
+		return list
+	end,
+	notifyAll = function(text)
+		notifyRemote:FireAllClients(text)
+	end,
+})
+
+boatPrompt.Triggered:Connect(function(player)
+	local clock = os.clock()
+	if lastAction[player] and clock - lastAction[player] < ACTION_COOLDOWN then
+		return
+	end
+	lastAction[player] = clock
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	local now = os.time()
+	settleAndNotify(player, data, now)
+	local coinsBefore = data.coins
+	local ok, msg = BoatService.sell(player, data, now)
+	if ok then
+		AnalyticsTracker.economy(player, data, "sell", data.coins - coinsBefore, "boat")
+		AnalyticsTracker.check(player, data)
+	end
+	notifyRemote:FireClient(player, msg)
+	pushState(player, data, now)
+end)
 
 -- Player lifecycle --------------------------------------------------------
 local function onPlayerAdded(player: Player)

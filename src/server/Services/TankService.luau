@@ -155,6 +155,40 @@ function TankService.sell(data, uids: { number }?, now: number)
 	return true, ("Sold %d fish for %d coins"):format(count, net)
 end
 
+-- Sells up to maxCount adult fish of one species to an NPC buyer (fishing boat) at a fixed
+-- price per size-1 fish. Biggest first. No market fee, no market pressure. Returns count, coins.
+function TankService.sellToBuyer(data, speciesId: string, maxCount: number, pricePerUnit: number)
+	local adults = {}
+	for _, fish in data.fish do
+		if fish.species == speciesId and fish.age >= 1 then
+			table.insert(adults, fish)
+		end
+	end
+	table.sort(adults, function(a, b)
+		return a.age > b.age
+	end)
+	local count = math.min(maxCount, #adults)
+	if count <= 0 then
+		return 0, 0
+	end
+	local sold, coins = {}, 0
+	for i = 1, count do
+		sold[adults[i]] = true
+		coins += math.floor(pricePerUnit * Config.sizeFromAge(adults[i].age) + 0.5)
+	end
+	local keep = {}
+	for _, fish in data.fish do
+		if not sold[fish] then
+			table.insert(keep, fish)
+		end
+	end
+	data.fish = keep
+	data.coins += coins
+	data.stats.earned += coins
+	data.stats.sold += count
+	return count, coins
+end
+
 -- No fish + can't afford the cheapest egg = stuck forever. Top up so they can restart.
 -- Returns true if a rescue happened.
 function TankService.rescueIfBroke(data, now: number): boolean

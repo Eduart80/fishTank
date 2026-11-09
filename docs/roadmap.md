@@ -30,7 +30,11 @@ Rule for every danger: **warning + counter + limit**. A loss must be one the pla
 | Seagull 🐦 | Circles plaza ~30s first (shadow + squawk) → dives on a tank with no lid, takes **max 1 small fish**. Press E at the tank to scare it off (friends can help). **Only while owner is online** | Tank Lid, Scarecrow / Owl Statue decor |
 | Fishing pier 🎣 | Press E to cast, timing-bar minigame. Mostly small/cheap catches + junk (old boot = 1 coin), rare wild egg, very rare variant. Bait costs coins (better bait = better odds). Big catches come out **small** → still need the tank to grow. Wild catches sold add market sell pressure | Replaces rescue coins as the broke-player path; side dish, **tank stays the main meal** |
 
-All four change the economy → re-run the progression sim before shipping.
+| Egg hatchery stock | Each species has a global stock (e.g. Koi 10). Buying lowers it ("8 left"), restocks slowly over time; price rises as stock falls. **Guppy never sells out** (price rises only) so new players can always start. "Only 2 Koi eggs left!" = urgency | Market board EGG column, MemoryStore (same as egg pressure) |
+
+| Fisherman visitors | Builds on the fishing boat (✅ built): an NPC walks off the boat to YOUR tank with a personal offer. Characters: Old Pete (fair), Rich Collector (big fish only, pays extra), Sneaky Sam (below market, check the board!). Accept/Decline, max 1 visit per 15–20 min, only while online | Fishing boat, pier |
+
+All of these change the economy → re-run the progression sim before shipping.
 
 ### Bait Shack 🏪 (after the fishing minigame works)
 

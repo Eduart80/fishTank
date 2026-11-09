@@ -6,6 +6,7 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
+local MarketMath = require(ReplicatedStorage.Shared.MarketMath)
 
 local WorldService = {}
 
@@ -174,7 +175,7 @@ local function buildMarket(parent: Instance)
 		{ x = 0.07, w = 0.24, align = Enum.TextXAlignment.Left, header = "FISH" },
 		{ x = 0.31, w = 0.14, align = Enum.TextXAlignment.Right, header = "PRICE" },
 		{ x = 0.46, w = 0.14, align = Enum.TextXAlignment.Right, header = "1H" },
-		{ x = 0.61, w = 0.14, align = Enum.TextXAlignment.Right, header = "EGG" },
+		{ x = 0.61, w = 0.14, align = Enum.TextXAlignment.Right, header = "EGG PRICE" },
 		{ x = 0.76, w = 0.19, align = Enum.TextXAlignment.Right, header = "GROWING" },
 	}
 	local headerColor = Color3.fromRGB(150, 172, 196)
@@ -424,11 +425,23 @@ function WorldService.updateBoard(snapshot)
 		row.change.Text = ("%s%.1f%%"):format(if pct >= 0 then "+" else "", pct)
 		row.change.TextColor3 = if pct >= 0 then COLORS.up else COLORS.down
 		local egg = snapshot.eggPrices[species.id]
-		row.egg.Text = tostring(egg)
-		row.egg.TextColor3 = if egg > species.eggPrice then COLORS.down else COLORS.text -- red = pricier than normal
+		local rising = egg > species.eggPrice or (snapshot.eggDemand[species.id] or 0) >= MarketMath.EGG_DEMAND_MARKER
+		row.egg.Text = if rising then tostring(egg) .. " ▲" else tostring(egg)
+		row.egg.TextColor3 = if rising then COLORS.down else COLORS.text -- red ▲ = people are buying, price going up
 		row.growing.Text = tostring(snapshot.growing[species.id])
 	end
-	boardEvent.Text = if snapshot.event then (snapshot.event.title .. ": " .. snapshot.event.text) else ""
+	local event = snapshot.event
+	if event then
+		local secs = math.max(0, event.endsAt - snapshot.now)
+		local parts = { event.title .. ": " .. event.text }
+		if event.orderLeft then
+			table.insert(parts, if event.orderLeft > 0 then ("%d of %d left"):format(event.orderLeft, event.orderSize) else "ORDER FILLED")
+		end
+		table.insert(parts, ("ends in %d:%02d"):format(secs // 60, secs % 60))
+		boardEvent.Text = table.concat(parts, " · ")
+	else
+		boardEvent.Text = ""
+	end
 end
 
 return WorldService

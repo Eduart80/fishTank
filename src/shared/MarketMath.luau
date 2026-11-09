@@ -16,8 +16,8 @@ MarketMath.EVENT_CHANCE = 0.4 -- chance an hour has an event
 MarketMath.EVENT_DURATION = 20 * 60
 
 MarketMath.EVENTS = {
-	{ id = "festival", title = "Sushi Festival", text = "Everyone wants {fish}! Price x2.5", mult = 2.5, scope = "one" },
-	{ id = "chef", title = "Celebrity Chef", text = "A famous chef is buying {fish}. Price x3", mult = 3, scope = "one" },
+	{ id = "festival", title = "Sushi Festival", text = "Everyone wants {fish}! Price x{mult}", mult = 2.5, scope = "one" },
+	{ id = "chef", title = "Celebrity Chef", text = "A famous chef is buying {fish}. Price x{mult}", mult = 3, scope = "one" },
 	{ id = "scare", title = "Fish Flu Scare", text = "Nobody wants {fish} right now. Price x0.5", mult = 0.5, scope = "one" },
 	{ id = "storm", title = "Storm at Sea", text = "No boats out today. All prices +40%", mult = 1.4, scope = "all" },
 }
@@ -37,10 +37,17 @@ function MarketMath.decay(pressure: number, dt: number, halfLife: number?): numb
 	return pressure * 0.5 ^ (dt / (halfLife or MarketMath.HALF_LIFE))
 end
 
-function MarketMath.eggPrice(species, eggPressure: number): number
-	local mult = math.min(MarketMath.EGG_MAX_MULT, 1 + MarketMath.EGG_SENSITIVITY * eggPressure / species.liquidity)
-	return math.floor(species.eggPrice * mult + 0.5)
+function MarketMath.eggMult(species, eggPressure: number): number
+	return math.min(MarketMath.EGG_MAX_MULT, 1 + MarketMath.EGG_SENSITIVITY * eggPressure / species.liquidity)
 end
+
+function MarketMath.eggPrice(species, eggPressure: number): number
+	return math.floor(species.eggPrice * MarketMath.eggMult(species, eggPressure) + 0.5)
+end
+
+-- Recent egg buys (decaying) at or above this show a ▲ "demand rising" marker, even when the
+-- price rise is still too small to change the rounded coin price.
+MarketMath.EGG_DEMAND_MARKER = 0.5
 
 -- ~0.76x .. 1.24x, three overlapping waves (3h, 47m, 11m), phase-shifted per species
 function MarketMath.drift(speciesIndex: number, t: number): number
@@ -51,10 +58,12 @@ function MarketMath.drift(speciesIndex: number, t: number): number
 		+ 0.04 * math.sin(TAU * t / (11 * 60) + s * 3.1)
 end
 
--- Returns the active event at time t, or nil. Deterministic per hour.
-function MarketMath.eventAt(t: number, speciesCount: number)
+-- Returns the active event at time t, or nil. Deterministic per hour, so all servers agree.
+-- The server passes a secret: clients can read this file but not the secret, so they can't
+-- work out future events.
+function MarketMath.eventAt(t: number, speciesCount: number, secret: number?)
 	local hour = t // 3600
-	local rng = Random.new(hour * 7919 + 17)
+	local rng = Random.new(hour * 7919 + 17 + (secret or 0))
 	if rng:NextNumber() > MarketMath.EVENT_CHANCE then
 		return nil
 	end

@@ -398,6 +398,33 @@ test("Tracking never skips a step (sale without unlock stays at 4)", function(ch
 	check(AnalyticsTracker._stepReached(d) == 4, "step " .. AnalyticsTracker._stepReached(d))
 end)
 
+-- Fishing boat ------------------------------------------------------------
+test("Boat buys only adults of the wanted species, biggest first, up to its limit", function(check)
+	local d = newPlayer(now)
+	addFish(d, "clownfish", 1, now)
+	addFish(d, "clownfish", Config.MAX_AGE, now)
+	addFish(d, "clownfish", 0.5, now) -- baby
+	addFish(d, "guppy", 1, now) -- other species
+	local coins = d.coins
+	local count, paid = TankService.sellToBuyer(d, "clownfish", 1, 100)
+	check(count == 1, "sold " .. count)
+	check(paid == math.floor(100 * Config.MAX_SIZE + 0.5), "paid " .. paid .. " (should take the biggest)")
+	check(d.coins == coins + paid and d.stats.earned == paid, "coins/earned wrong")
+	check(#d.fish == 3, "fish left " .. #d.fish)
+end)
+
+test("Boat pays nothing if you have no matching adults", function(check)
+	local d = newPlayer(now)
+	addFish(d, "salmon", 0.9, now)
+	local count, paid = TankService.sellToBuyer(d, "salmon", 3, 200)
+	check(count == 0 and paid == 0, "sold a baby")
+	check(#d.fish == 1, "fish removed")
+end)
+
+test("Expensive fish events are capped at x2", function(check)
+	check(Config.ById.tuna.maxEventMult == 2 and Config.ById.koi.maxEventMult == 2, "cap missing")
+end)
+
 -- Done --------------------------------------------------------------------
 MarketService._restoreForTests(marketBackup)
 print("─────────────────────────────────────────────")
