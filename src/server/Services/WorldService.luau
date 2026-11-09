@@ -59,6 +59,23 @@ local function part(props)
 	return p
 end
 
+-- The island sand is terrain (4-stud voxels), so its surface sits a bit ABOVE the plaza part in
+-- places. Things standing on the ground (patio items, the store) must start on whichever is higher,
+-- or their bottom gets buried (the beach chair lost its seat + legs this way).
+local function groundY(x: number, z: number): number
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { workspace.Terrain }
+	local hit = workspace:Raycast(Vector3.new(x, 60, z), Vector3.new(0, -120, 0), params)
+	return math.max(FLOOR_Y, if hit then hit.Position.Y else FLOOR_Y)
+end
+
+-- cf moved up/down so it sits on the real ground at its own x/z (keeps its rotation)
+local function onGround(cf: CFrame): CFrame
+	local p = cf.Position
+	return cf + Vector3.new(0, groundY(p.X, p.Z) - p.Y, 0)
+end
+
 local function textLabel(props)
 	local l = Instance.new("TextLabel")
 	l.BackgroundTransparency = 1
@@ -326,14 +343,15 @@ local function buildTank(index: number, cf: CFrame, parent: Instance)
 	-- (every client hides the prompts on tanks that aren't theirs, like the feed prompt)
 	local patioSpots = {}
 	for spot, offset in PATIO_SPOTS do
+		local spotCF = onGround(cf * CFrame.new(offset)) -- on top of the terrain sand, not under it
 		local marker = part({
 			Name = "PatioSpot",
 			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.1, 5, 5),
-			CFrame = cf * CFrame.new(offset + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.pi / 2),
-			Material = Enum.Material.Sand,
-			Color = COLORS.sand,
-			Transparency = 0.35,
+			Size = Vector3.new(0.12, 5, 5),
+			CFrame = spotCF * CFrame.new(0, 0.06, 0) * CFrame.Angles(0, 0, math.pi / 2),
+			Material = Enum.Material.SmoothPlastic,
+			Color = Color3.fromRGB(255, 245, 215), -- light circle so it stands out on the sand
+			Transparency = 0.45,
 			CanCollide = false,
 			CanTouch = false,
 			Parent = model,
@@ -347,7 +365,7 @@ local function buildTank(index: number, cf: CFrame, parent: Instance)
 		patioPrompt.MaxActivationDistance = 6
 		patioPrompt.RequiresLineOfSight = false
 		patioPrompt.Parent = marker
-		patioSpots[spot] = { marker = marker, prompt = patioPrompt, itemId = nil, model = nil, cf = cf * CFrame.new(offset) }
+		patioSpots[spot] = { marker = marker, prompt = patioPrompt, itemId = nil, model = nil, cf = spotCF }
 	end
 
 	model.Parent = parent
@@ -640,7 +658,7 @@ local function buildStore(parent: Instance)
 	local model = Instance.new("Model")
 	model.Name = "HarborStore"
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
-	local cf = CFrame.lookAt(STORE_POS, Vector3.new(0, FLOOR_Y, 0)) -- front (-Z) faces the plaza centre
+	local cf = onGround(CFrame.lookAt(STORE_POS, Vector3.new(0, FLOOR_Y, 0))) -- front (-Z) faces the plaza centre; on the sand
 	local W, D, H = 16, 10, 9
 	local wood, planks = COLORS.wood, Color3.fromRGB(205, 170, 120)
 	local function piece(name, size, offset: CFrame, color, material, collide)
@@ -693,7 +711,7 @@ local function buildStore(parent: Instance)
 
 	-- show-off display in front of the hut (same models players can buy)
 	for _, display in { { "umbrella", -11, -9 }, { "chair", -11, -8.5 }, { "torch", 10.5, -8 }, { "sandcastle", 12, -11 } } do
-		local m = PatioModels.build(display[1], cf * CFrame.new(display[2], 0, display[3]))
+		local m = PatioModels.build(display[1], onGround(cf * CFrame.new(display[2], 0, display[3])))
 		if m then
 			m.Parent = model
 		end
@@ -823,7 +841,7 @@ function WorldService.showPatio(plot, patio, colors)
 				end
 			end
 			local item = want and Config.PatioById[want]
-			s.marker.Transparency = if want then 1 else 0.35
+			s.marker.Transparency = if want then 1 else 0.45
 			s.prompt.ActionText = if item then "Pick up" else "Place item"
 			s.prompt.ObjectText = if item then item.name else "Patio spot"
 		end
