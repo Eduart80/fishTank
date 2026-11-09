@@ -69,6 +69,22 @@ Build rule: one world at a time, next world only after playtests show players re
 | 37 | Leviathan | ⬜ | Final boss before the end |
 | 38 | **The Kraken** | ⬜ | Norse legend — **"Release the Kraken"** = prestige + server-wide event |
 
+## Size → home (see roadmap "Creature size rule")
+
+Real scale, 1 stud ≈ 0.28 m. Fits a home if length ≤ ~70% of the home's length.
+
+| Max length | Home needed | Creatures (approx. real length) |
+|---|---|---|
+| ~7 studs | Small Tank | guppy, clownfish, goldfish, pufferfish, seahorse, starfish, crab |
+| ~15 | Medium Tank | salmon, koi, lobster, jellyfish, lanternfish, anglerfish |
+| ~28 | Large Tank | tuna, sea turtle, octopus, dolphin, beluga, orca (8 m = 28 studs) |
+| ~50 | Sea Pen | manta ray, hammerhead, great white, swordfish, narwhal, humpback (14 m = 50 studs), sperm whale (stylise a bit smaller) |
+| ~65 | World 3 deep-sea dome (own map) | Megalodon (18 m = 64 studs), giant squid |
+| 90+ | World 4 ocean bay (own map) | blue whale (25 m = 90 studs) |
+| — | World 5, summoned | myths; **Kraken** is released (server event), never kept |
+
+Visual size in game can be stylised down a little, but keep the order (whale > shark > tuna).
+
 ## Rare variants (all creatures, phase 3)
 
 Golden ×5 price · Neon (glows) ×3 · Albino ×2 · Giant ×1.5 size · Shadow (Deep Sea only)

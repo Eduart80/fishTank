@@ -62,12 +62,11 @@ local function build(parent)
 	return pieces
 end
 
-function BoatRenderer.start()
-	local dock = workspace:WaitForChild("FishWorld"):WaitForChild("BoatDock")
-	local folder = Instance.new("Folder")
-	folder.Name = "LocalBoat"
-	folder.Parent = workspace
+-- One boat per BoatDock part. Every pier is the main pier turned by PierAngle around the island
+-- centre, so the shared path (built for the main pier) is turned the same way.
+local function drive(dock: BasePart, folder: Folder)
 	local pieces = build(folder)
+	local rot = CFrame.Angles(0, math.rad(dock:GetAttribute("PierAngle") or 0), 0)
 
 	local parts, cframes = {}, {}
 	for i, piece in pieces do
@@ -77,6 +76,9 @@ function BoatRenderer.start()
 
 	RunService.RenderStepped:Connect(function()
 		local cf = BoatPath.cframeAt(dock:GetAttribute("State") or "away", dock:GetAttribute("PhaseStart") or 0, workspace:GetServerTimeNow())
+		if cf then
+			cf = rot * cf
+		end
 		if not cf then
 			if visible then
 				visible = false
@@ -93,6 +95,25 @@ function BoatRenderer.start()
 		end
 		workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
 	end)
+end
+
+function BoatRenderer.start()
+	local world = workspace:WaitForChild("FishWorld")
+	world:WaitForChild("BoatDock") -- the main dock; the others are created right after it
+	local folder = Instance.new("Folder")
+	folder.Name = "LocalBoat"
+	folder.Parent = workspace
+	local started = {}
+	local function try(child: Instance)
+		if child:IsA("BasePart") and string.sub(child.Name, 1, 8) == "BoatDock" and not started[child] then
+			started[child] = true
+			drive(child, folder)
+		end
+	end
+	for _, child in world:GetChildren() do
+		try(child)
+	end
+	world.ChildAdded:Connect(try)
 end
 
 return BoatRenderer

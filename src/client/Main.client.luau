@@ -471,7 +471,7 @@ local function renderTank()
 	coinsLabel.Text = fmt(tank.coins)
 
 
-	tankTitle.Text = ("Your Tank %d/%d"):format(#tank.fish, tank.slots)
+	tankTitle.Text = ("%s %d/%d"):format(Config.TANK_STAGES[Config.tankStage(tank.slots)].name, #tank.fish, tank.slots)
 	slotButton.Text = if tank.slots >= tank.maxSlots then "Max" else ("+Slot %s"):format(fmt(tank.slotCost))
 
 	local seen = {}

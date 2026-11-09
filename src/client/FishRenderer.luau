@@ -55,12 +55,34 @@ local function applySize(fish)
 	end
 end
 
-local function randomPoint(water: BasePart, margin: number): Vector3
-	local half = water.Size / 2
-	local hx = math.max(0, half.X - margin)
-	local hy = math.max(0, half.Y - margin * 0.6)
-	local hz = math.max(0, half.Z - margin)
-	return water.CFrame * Vector3.new(rng:NextNumber(-hx, hx), rng:NextNumber(-hy, hy), rng:NextNumber(-hz, hz))
+-- Tank shape from the plot's attributes (set by the server's WorldService.setStage):
+-- a trapezoid seen from above in the plot's local space, front edge narrow, back edge wide.
+local function readShape(tank)
+	local m = tank.plot
+	tank.zF = m:GetAttribute("TankFrontZ") or -5
+	tank.zB = m:GetAttribute("TankBackZ") or 5
+	tank.hf = m:GetAttribute("TankHalfFront") or 10
+	tank.hb = m:GetAttribute("TankHalfBack") or 10
+	tank.yLo = m:GetAttribute("WaterBottom") or 4
+	tank.yHi = m:GetAttribute("WaterTop") or 15
+end
+
+local function halfWidthAt(tank, z: number): number
+	return tank.hf + (tank.hb - tank.hf) * (z - tank.zF) / (tank.zB - tank.zF)
+end
+
+-- the side walls are slanted, so keep a bit more distance from them than from a straight wall
+local function limits(tank, margin: number, z: number): (number, number, number, number, number)
+	local zLo, zHi = tank.zF + margin, math.max(tank.zF + margin, tank.zB - margin)
+	local cz = math.clamp(z, zLo, zHi)
+	local hw = math.max(0, halfWidthAt(tank, cz) - margin * 1.15)
+	return zLo, zHi, hw, tank.yLo + margin * 0.6, math.max(tank.yLo + margin * 0.6, tank.yHi - margin * 0.6)
+end
+
+local function randomPoint(tank, margin: number): Vector3
+	local z = rng:NextNumber(tank.zF + margin, math.max(tank.zF + margin, tank.zB - margin))
+	local _, _, hw, yLo, yHi = limits(tank, margin, z)
+	return tank.origin.CFrame * Vector3.new(rng:NextNumber(-hw, hw), rng:NextNumber(yLo, yHi), z)
 end
 
 local function margin(fish): number
@@ -84,8 +106,8 @@ local function createFish(tank, entry)
 		dir = Vector3.new(rng:NextNumber(-1, 1), 0, rng:NextNumber(-1, 1)).Unit,
 	}
 	applySize(fish)
-	fish.pos = randomPoint(tank.water, margin(fish))
-	fish.target = randomPoint(tank.water, margin(fish))
+	fish.pos = randomPoint(tank, margin(fish))
+	fish.target = randomPoint(tank, margin(fish))
 	return fish
 end
 
@@ -127,12 +149,18 @@ end
 
 local function addTank(plot: Instance)
 	task.spawn(function()
-		local water = plot:WaitForChild("Water", 30)
+		local origin = plot:WaitForChild("TankOrigin", 30)
 		local data = plot:WaitForChild("FishData", 30)
-		if not water or not data then
+		if not origin or not data then
 			return
 		end
-		local tank = { water = water, fish = {} }
+		local tank = { plot = plot, origin = origin, fish = {} }
+		readShape(tank)
+		plot.AttributeChanged:Connect(function(name)
+			if string.sub(name, 1, 4) == "Tank" or string.sub(name, 1, 5) == "Water" then
+				readShape(tank) -- tank grew: fish just get more room (the clamp handles a shrink)
+			end
+		end)
 		tanks[plot] = tank
 		syncTank(tank, data.Value)
 		data.Changed:Connect(function()
@@ -156,7 +184,7 @@ local function step(dt: number)
 			-- new target when reached, or after a few seconds so a fish can never circle forever
 			local toTarget = fish.target - fish.pos
 			if toTarget.Magnitude < 1.5 or t > (fish.retargetAt or 0) then
-				fish.target = randomPoint(tank.water, margin(fish))
+				fish.target = randomPoint(tank, margin(fish))
 				fish.retargetAt = t + rng:NextNumber(3, 6)
 				toTarget = fish.target - fish.pos
 			end
@@ -172,18 +200,15 @@ local function step(dt: number)
 			end
 			fish.pos += fish.dir * speed * dt
 
-			-- hard wall: whatever happens, the fish stays inside the water box
-			local water = tank.water
+			-- hard wall: whatever happens, the fish stays inside the tank shape
+			local originCF = tank.origin.CFrame
 			local m = margin(fish)
-			local half = water.Size / 2
-			local localPos = water.CFrame:PointToObjectSpace(fish.pos)
-			local limX = math.max(0, half.X - m)
-			local limY = math.max(0, half.Y - m * 0.6)
-			local limZ = math.max(0, half.Z - m)
-			local clamped = Vector3.new(math.clamp(localPos.X, -limX, limX), math.clamp(localPos.Y, -limY, limY), math.clamp(localPos.Z, -limZ, limZ))
+			local localPos = originCF:PointToObjectSpace(fish.pos)
+			local zLo, zHi, hw, yLo, yHi = limits(tank, m, localPos.Z)
+			local clamped = Vector3.new(math.clamp(localPos.X, -hw, hw), math.clamp(localPos.Y, yLo, yHi), math.clamp(localPos.Z, zLo, zHi))
 			if clamped ~= localPos then
-				fish.pos = water.CFrame:PointToWorldSpace(clamped)
-				fish.target = randomPoint(water, m)
+				fish.pos = originCF:PointToWorldSpace(clamped)
+				fish.target = randomPoint(tank, m)
 				fish.retargetAt = t + rng:NextNumber(3, 6)
 			end
 

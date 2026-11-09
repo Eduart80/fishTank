@@ -53,8 +53,34 @@ local function pushState(player: Player, data, now: number)
 	local state = TankService.publicState(data, now)
 	stateRemote:FireClient(player, state)
 	WorldService.updateFeedPrompt(player, state)
+	WorldService.updateTankStage(player, data.slots)
 	updateLeaderstats(player, data)
 	WorldService.updateFish(player, data, now)
+end
+
+-- STUDIO ONLY test shortcut. Two ways (6 / 10 / 15 / 20 = Small / Medium / Large / Sea Pen):
+--   a) While playing: Explorer -> Workspace -> Properties -> Attributes -> "SetSlots" -> type 20
+--   b) Command bar on the SERVER side:  workspace:SetAttribute("SetSlots", 20)
+-- Changes your saved slots in the _studio DataStore only. Never exists on live servers.
+if game:GetService("RunService"):IsStudio() then
+	local function setSlots(slots: number)
+		local player = Players:GetPlayers()[1]
+		local data = player and DataService.get(player)
+		if not data then
+			return warn("[setSlots] no player data yet")
+		end
+		data.slots = math.clamp(math.floor(slots), Config.STARTING_SLOTS, Config.MAX_SLOTS)
+		pushState(player, data, os.time())
+		print(("[setSlots] %s now has %d slots (%s)"):format(player.Name, data.slots, Config.TANK_STAGES[Config.tankStage(data.slots)].name))
+	end
+	_G.setSlots = setSlots
+	workspace:SetAttribute("SetSlots", 0) -- shows up in Workspace's Properties so it can be typed into
+	workspace:GetAttributeChangedSignal("SetSlots"):Connect(function()
+		local value = tonumber(workspace:GetAttribute("SetSlots"))
+		if value and value > 0 then
+			setSlots(value)
+		end
+	end)
 end
 
 local function settleAndNotify(player: Player, data, now: number)
@@ -145,8 +171,8 @@ WorldService.onFeed(function(player)
 	end
 end)
 
--- Fishing boat ------------------------------------------------------------
-local boatPrompt = BoatService.start({
+-- Fishing boats (one per pier) -------------------------------------------
+local boatPrompts = BoatService.start({
 	getOnlineData = function()
 		local list = {}
 		for _, player in Players:GetPlayers() do
@@ -162,27 +188,29 @@ local boatPrompt = BoatService.start({
 	end,
 })
 
-boatPrompt.Triggered:Connect(function(player)
-	local clock = os.clock()
-	if lastAction[player] and clock - lastAction[player] < ACTION_COOLDOWN then
-		return
-	end
-	lastAction[player] = clock
-	local data = DataService.get(player)
-	if not data then
-		return
-	end
-	local now = os.time()
-	settleAndNotify(player, data, now)
-	local coinsBefore = data.coins
-	local ok, msg = BoatService.sell(player, data, now)
-	if ok then
-		AnalyticsTracker.economy(player, data, "sell", data.coins - coinsBefore, "boat")
-		AnalyticsTracker.check(player, data)
-	end
-	notifyRemote:FireClient(player, msg)
-	pushState(player, data, now)
-end)
+for prompt, boat in boatPrompts do
+	prompt.Triggered:Connect(function(player)
+		local clock = os.clock()
+		if lastAction[player] and clock - lastAction[player] < ACTION_COOLDOWN then
+			return
+		end
+		lastAction[player] = clock
+		local data = DataService.get(player)
+		if not data then
+			return
+		end
+		local now = os.time()
+		settleAndNotify(player, data, now)
+		local coinsBefore = data.coins
+		local ok, msg = BoatService.sell(boat, player, data, now)
+		if ok then
+			AnalyticsTracker.economy(player, data, "sell", data.coins - coinsBefore, "boat")
+			AnalyticsTracker.check(player, data)
+		end
+		notifyRemote:FireClient(player, msg)
+		pushState(player, data, now)
+	end)
+end
 
 -- Robux shop --------------------------------------------------------------
 ShopService.start({

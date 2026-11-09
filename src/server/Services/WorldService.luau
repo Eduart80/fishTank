@@ -64,19 +64,59 @@ local function textLabel(props)
 	return l
 end
 
-local function buildTank(index: number, cf: CFrame, parent: Instance)
-	local model = Instance.new("Model")
-	model.Name = "Plot" .. index
-	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
-	model:SetAttribute("OwnerId", 0)
+-- Tank geometry (plot-local studs, +z = away from the plaza toward the sea). See Config.TANK_STAGES.
+local FRONT_Z = -TANK_D / 2
+local HALF_FRONT = TANK_W / 2
+local ISLAND_HALF = 115 -- = ISLAND_SIZE / 2 (sea section); stand parts past this get piles
+local SEA_FLOOR_Y = -21.5 -- = SEA_LEVEL - SEA_DEPTH (sea section)
 
-	part({ Name = "Stand", Size = Vector3.new(TANK_W + 2, STAND_H, TANK_D + 2), CFrame = cf * CFrame.new(0, STAND_H / 2, 0), Material = Enum.Material.WoodPlanks, Color = COLORS.wood, Parent = model })
-	part({ Name = "Sand", Size = Vector3.new(TANK_W, 1, TANK_D), CFrame = cf * CFrame.new(0, STAND_H + 0.5, 0), Material = Enum.Material.Sand, Color = COLORS.sand, Parent = model })
-	local waterH = TANK_H - 1
-	part({
-		Name = "Water",
-		Size = Vector3.new(TANK_W, waterH, TANK_D),
-		CFrame = cf * CFrame.new(0, STAND_H + 1 + waterH / 2, 0),
+-- Flat trapezoid seen from above: a centre box plus a flat wedge on each side.
+-- The centre box carries `name`; the wedges are named name .. "Wedge".
+local function trapezoid(name: string, model: Instance, cf: CFrame, hf: number, hb: number, zF: number, zB: number, y: number, thick: number, props)
+	local depth = zB - zF
+	local function apply(p)
+		for key, value in props do
+			p[key] = value
+		end
+		p.Parent = model
+		return p
+	end
+	local box = apply(part({ Name = name, Size = Vector3.new(hf * 2, thick, depth), CFrame = cf * CFrame.new(0, y, (zF + zB) / 2) }))
+	local extra = hb - hf
+	if extra > 0.05 then
+		for _, side in { 1, -1 } do
+			-- A WedgePart's triangle lives in its local Y/Z plane (right angle at -Y,+Z). Lay it flat:
+			-- local Y -> plot ±X (outward), local Z -> plot +Z, local X -> vertical.
+			local w = Instance.new("WedgePart")
+			w.Anchored = true
+			w.TopSurface = Enum.SurfaceType.Smooth
+			w.BottomSurface = Enum.SurfaceType.Smooth
+			w.Name = name .. "Wedge"
+			w.Size = Vector3.new(thick, extra, depth)
+			local center = Vector3.new(side * (hf + extra / 2), y, (zF + zB) / 2)
+			w.CFrame = cf * CFrame.fromMatrix(center, Vector3.new(0, -side, 0), Vector3.new(side, 0, 0), Vector3.new(0, 0, 1))
+			apply(w)
+		end
+	end
+	return box
+end
+
+local function halfWidthAt(stage, z: number): number
+	local t = (z - FRONT_Z) / (stage.backZ - FRONT_Z)
+	return HALF_FRONT + (stage.halfBack - HALF_FRONT) * t
+end
+
+-- Everything except the front glass: rebuilt whenever the tank changes stage.
+local function buildShape(index: number, cf: CFrame, model: Instance, stageIndex: number)
+	local stage = Config.TANK_STAGES[stageIndex]
+	local shape = Instance.new("Model")
+	shape.Name = "Shape"
+	local zF, zB, hf, hb, H = FRONT_Z, stage.backZ, HALF_FRONT, stage.halfBack, stage.height
+
+	trapezoid("Stand", shape, cf, hf + 1, hb + 1, zF - 1, zB + 1, STAND_H / 2, STAND_H, { Material = Enum.Material.WoodPlanks, Color = COLORS.wood })
+	trapezoid("Sand", shape, cf, hf, hb, zF, zB, STAND_H + 0.5, 1, { Material = Enum.Material.Sand, Color = COLORS.sand })
+	local waterH = H - 1
+	trapezoid("Water", shape, cf, hf, hb, zF, zB, STAND_H + 1 + waterH / 2, waterH, {
 		Material = Enum.Material.SmoothPlastic,
 		Color = COLORS.water,
 		Transparency = 0.75,
@@ -84,21 +124,129 @@ local function buildTank(index: number, cf: CFrame, parent: Instance)
 		CanQuery = false,
 		CanTouch = false,
 		CastShadow = false,
-		Parent = model,
 	})
 
-	-- glass: front faces the plaza centre (local -Z)
-	local midY = STAND_H + TANK_H / 2
+	local midY = STAND_H + H / 2
 	local glass = { Material = Enum.Material.Glass, Color = COLORS.glass, Transparency = 0.8, CastShadow = false }
 	local function pane(name, size, offset)
 		local props = table.clone(glass)
 		props.Name = name
 		props.Size = size
 		props.CFrame = cf * offset
-		props.Parent = model
+		props.Parent = shape
 		return part(props)
 	end
-	local front = pane("GlassFront", Vector3.new(TANK_W + 0.8, TANK_H, 0.4), CFrame.new(0, midY, -(TANK_D / 2 + 0.2)))
+	pane("GlassBack", Vector3.new(hb * 2 + 0.8, H, 0.4), CFrame.new(0, midY, zB + 0.2))
+	for _, side in { 1, -1 } do
+		local a = Vector3.new(side * (hf + 0.2), midY, zF)
+		local c = Vector3.new(side * (hb + 0.2), midY, zB)
+		pane(if side > 0 then "GlassRight" else "GlassLeft", Vector3.new(0.4, H, (c - a).Magnitude), CFrame.lookAt((a + c) / 2, c))
+	end
+	trapezoid("Lid", shape, cf, hf + 0.4, hb + 0.4, zF - 0.4, zB + 0.4, STAND_H + H + 0.2, 0.4, {
+		Material = Enum.Material.Glass,
+		Color = COLORS.glass,
+		Transparency = 0.9,
+		CastShadow = false,
+	})
+
+	-- wooden piles under any part of the stand that hangs over the sea
+	local function pile(x: number, z: number)
+		local world = cf * Vector3.new(x, 0, z)
+		if math.abs(world.X) < ISLAND_HALF - 2 and math.abs(world.Z) < ISLAND_HALF - 2 then
+			return
+		end
+		part({ Name = "Pile", Size = Vector3.new(1.4, FLOOR_Y - SEA_FLOOR_Y, 1.4), CFrame = CFrame.new(world.X, (FLOOR_Y + SEA_FLOOR_Y) / 2, world.Z), Material = Enum.Material.Wood, Color = Color3.fromRGB(80, 56, 36), Parent = shape })
+	end
+	if zB > 20 then
+		for z = zF + 10, zB + 9, 10 do
+			local zz = math.min(z, zB)
+			local hw = halfWidthAt(stage, zz)
+			pile(hw, zz)
+			pile(-hw, zz)
+			if hw > 18 then
+				pile(0, zz)
+			end
+		end
+	end
+
+	-- decor scales with the tank so big tanks don't look empty
+	local rng = Random.new(index * 31 + stageIndex)
+	local function randomSpot(margin: number): (number, number)
+		local z = rng:NextNumber(zF + margin, zB - margin)
+		local hw = math.max(0, halfWidthAt(stage, z) - margin)
+		return rng:NextNumber(-hw, hw), z
+	end
+	for _ = 1, 2 * stageIndex do
+		local size = rng:NextNumber(1.5, 3 + stageIndex * 0.5)
+		local x, z = randomSpot(size)
+		part({ Name = "Rock", Shape = Enum.PartType.Ball, Size = Vector3.new(size, size, size), CFrame = cf * CFrame.new(x, STAND_H + 1 + size * 0.3, z), Material = Enum.Material.Slate, Color = COLORS.rock, CanCollide = false, Parent = shape })
+	end
+	for _ = 1, 4 * stageIndex do
+		local h = rng:NextNumber(3, math.min(H - 3, 7 + stageIndex))
+		local x, z = randomSpot(1)
+		part({ Name = "Seaweed", Size = Vector3.new(0.4, h, 0.4), CFrame = cf * CFrame.new(x, STAND_H + 1 + h / 2, z), Material = Enum.Material.Grass, Color = COLORS.weed, CanCollide = false, Parent = shape })
+	end
+
+	shape.Parent = model
+	return shape
+end
+
+-- Builds / rebuilds a plot at a stage. The front glass (prompts, food gauge, owner sign) stays put.
+local function setStage(plot, stageIndex: number)
+	if plot.stage == stageIndex then
+		return
+	end
+	local grew = plot.stage ~= nil and stageIndex > plot.stage and plot.owner ~= nil
+	plot.stage = stageIndex
+	if plot.shape then
+		plot.shape:Destroy()
+	end
+	plot.shape = buildShape(plot.index, plot.cf, plot.model, stageIndex)
+
+	local stage = Config.TANK_STAGES[stageIndex]
+	local H = stage.height
+	plot.front.Size = Vector3.new(TANK_W + 0.8, H, 0.4)
+	plot.front.CFrame = plot.cf * CFrame.new(0, STAND_H + H / 2, FRONT_Z - 0.2)
+	plot.billboard.StudsOffset = Vector3.new(0, H / 2 + 3.2, 0)
+
+	-- clients swim the fish inside this shape (client/FishRenderer)
+	local m = plot.model
+	m:SetAttribute("TankStage", stageIndex)
+	m:SetAttribute("TankFrontZ", FRONT_Z)
+	m:SetAttribute("TankBackZ", stage.backZ)
+	m:SetAttribute("TankHalfFront", HALF_FRONT)
+	m:SetAttribute("TankHalfBack", stage.halfBack)
+	m:SetAttribute("WaterBottom", STAND_H + 1)
+	m:SetAttribute("WaterTop", STAND_H + H)
+
+	if grew then
+		local burst = Instance.new("ParticleEmitter")
+		burst.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		burst.Color = ColorSequence.new(Color3.fromRGB(255, 230, 120))
+		burst.Size = NumberSequence.new(1.2, 0)
+		burst.Lifetime = NumberRange.new(1, 1.6)
+		burst.Speed = NumberRange.new(8, 14)
+		burst.SpreadAngle = Vector2.new(180, 180)
+		burst.Rate = 0
+		burst.Parent = plot.front
+		burst:Emit(80)
+		task.delay(2, function()
+			burst:Destroy()
+		end)
+	end
+end
+
+local function buildTank(index: number, cf: CFrame, parent: Instance)
+	local model = Instance.new("Model")
+	model.Name = "Plot" .. index
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	model:SetAttribute("OwnerId", 0)
+
+	-- invisible reference point: clients swim fish in this plot's local space
+	part({ Name = "TankOrigin", Size = Vector3.new(1, 1, 1), CFrame = cf, Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, Parent = model })
+
+	-- front glass faces the plaza centre (local -Z); setStage sizes it
+	local front = part({ Name = "GlassFront", Size = Vector3.new(TANK_W + 0.8, TANK_H, 0.4), CFrame = cf * CFrame.new(0, STAND_H + TANK_H / 2, FRONT_Z - 0.2), Material = Enum.Material.Glass, Color = COLORS.glass, Transparency = 0.8, CastShadow = false, Parent = model })
 
 	-- Food gauge on the bottom of the front glass. Clients fill it in every frame-ish from the
 	-- plot's FedUntil / FishCount attributes (smooth countdown, no server text updates).
@@ -132,28 +280,11 @@ local function buildTank(index: number, cf: CFrame, parent: Instance)
 	pad.PaddingTop = UDim.new(0.12, 0)
 	pad.PaddingBottom = UDim.new(0.12, 0)
 	pad.Parent = foodText
-	pane("GlassBack", Vector3.new(TANK_W + 0.8, TANK_H, 0.4), CFrame.new(0, midY, TANK_D / 2 + 0.2))
-	pane("GlassLeft", Vector3.new(0.4, TANK_H, TANK_D), CFrame.new(-(TANK_W / 2 + 0.2), midY, 0))
-	pane("GlassRight", Vector3.new(0.4, TANK_H, TANK_D), CFrame.new(TANK_W / 2 + 0.2, midY, 0))
-	local lid = pane("Lid", Vector3.new(TANK_W + 0.8, 0.4, TANK_D + 0.8), CFrame.new(0, STAND_H + TANK_H + 0.2, 0))
-	lid.Transparency = 0.9
-
-	-- a little decor so empty tanks don't look dead
-	local rng = Random.new(index * 31)
-	for _ = 1, 2 do
-		local size = rng:NextNumber(1.5, 3)
-		part({ Name = "Rock", Shape = Enum.PartType.Ball, Size = Vector3.new(size, size, size), CFrame = cf * CFrame.new(rng:NextNumber(-8, 8), STAND_H + 1 + size * 0.3, rng:NextNumber(-3, 3)), Material = Enum.Material.Slate, Color = COLORS.rock, CanCollide = false, Parent = model })
-	end
-	for _ = 1, 4 do
-		local h = rng:NextNumber(3, 7)
-		part({ Name = "Seaweed", Size = Vector3.new(0.4, h, 0.4), CFrame = cf * CFrame.new(rng:NextNumber(-9, 9), STAND_H + 1 + h / 2, rng:NextNumber(-4, 4)), Material = Enum.Material.Grass, Color = COLORS.weed, CanCollide = false, Parent = model })
-	end
-
 	local billboard = Instance.new("BillboardGui")
 	billboard.Size = UDim2.fromScale(16, 2.5) -- in studs, so far-away signs shrink naturally
-	billboard.StudsOffset = Vector3.new(0, 3, 0)
+	billboard.StudsOffset = Vector3.new(0, TANK_H / 2 + 3.2, 0)
 	billboard.MaxDistance = 120
-	billboard.Parent = lid
+	billboard.Parent = front
 	local label = textLabel({ Name = "OwnerLabel", Size = UDim2.fromScale(1, 1), Text = "Empty tank", TextStrokeTransparency = 0.4, Parent = billboard })
 
 	local prompt = Instance.new("ProximityPrompt")
@@ -184,7 +315,13 @@ local function buildTank(index: number, cf: CFrame, parent: Instance)
 	model.Parent = parent
 
 	local standPos = (cf * CFrame.new(0, 3, -(TANK_D / 2 + 10))).Position
-	return {
+	local plot = {
+		index = index,
+		cf = cf,
+		front = front,
+		billboard = billboard,
+		stage = nil,
+		shape = nil,
 		model = model,
 		owner = nil,
 		spawnCFrame = CFrame.lookAt(standPos, Vector3.new(cf.Position.X, standPos.Y, cf.Position.Z)),
@@ -194,6 +331,8 @@ local function buildTank(index: number, cf: CFrame, parent: Instance)
 		feedPrompt = feedPrompt,
 		lastJson = "[]",
 	}
+	setStage(plot, 1)
+	return plot
 end
 
 local function buildMarket(parent: Instance)
@@ -373,8 +512,9 @@ local function buildPier(parent: Instance)
 	gui.PixelsPerStud = 30
 	gui.LightInfluence = 0
 	gui.Parent = sign
-	textLabel({ Text = "FISHING PIER", Position = UDim2.fromScale(0.05, 0.08), Size = UDim2.fromScale(0.9, 0.55), Parent = gui })
-	textLabel({ Text = "coming soon", TextColor3 = Color3.fromRGB(255, 220, 150), Position = UDim2.fromScale(0.2, 0.62), Size = UDim2.fromScale(0.6, 0.3), Parent = gui })
+	-- title is set per pier in WorldService.start (MAIN / EAST / WEST PIER)
+	textLabel({ Name = "PierTitle", Text = "MAIN PIER", Position = UDim2.fromScale(0.05, 0.08), Size = UDim2.fromScale(0.9, 0.55), Parent = gui })
+	textLabel({ Name = "PierSubtitle", Text = "🚤 Boats buy fish here", TextColor3 = Color3.fromRGB(255, 220, 150), Position = UDim2.fromScale(0.1, 0.62), Size = UDim2.fromScale(0.8, 0.3), Parent = gui })
 
 	model.Parent = parent
 end
@@ -385,6 +525,22 @@ function WorldService.start()
 
 	buildSea()
 	buildPier(world)
+	-- More piers (Config.BOAT.piers): copies of the main one turned around the island centre into
+	-- the gaps between tanks (90 = east, between tanks 2/3; -90 = west, between 6/7). Each gets a boat.
+	local mainPier = world:FindFirstChild("FishingPier")
+	for i, pier in Config.BOAT.piers do
+		local model = mainPier
+		if pier.angle ~= 0 then
+			model = mainPier:Clone()
+			model.Name = "FishingPier" .. i
+			model:PivotTo(CFrame.Angles(0, math.rad(pier.angle), 0) * model:GetPivot())
+			model.Parent = world
+		end
+		local title = model:FindFirstChild("PierTitle", true)
+		if title then
+			title.Text = string.upper(pier.name) -- "MAIN PIER", "EAST PIER", "WEST PIER"
+		end
+	end
 
 	part({ Name = "Plaza", Size = Vector3.new(190, 0.4, 190), CFrame = CFrame.new(0, FLOOR_Y - 0.2, 0), Material = Enum.Material.Concrete, Color = COLORS.floor, Parent = world })
 
@@ -443,6 +599,15 @@ function WorldService.release(player: Player)
 	plot.model:SetAttribute("FishCount", 0)
 	plot.model:SetAttribute("AutoFeeder", false)
 	plot.lastJson = "[]"
+	setStage(plot, 1)
+end
+
+-- Grows (or, for a new owner, resets) the tank to match the owner's slot count.
+function WorldService.updateTankStage(player: Player, slots: number)
+	local plot = plotOf[player]
+	if plot then
+		setStage(plot, Config.tankStage(slots))
+	end
 end
 
 -- Feed prompt text on the player's own tank (cost of filling the food up).

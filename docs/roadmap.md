@@ -9,6 +9,7 @@ See also: `creatures.md` (38 creatures, 5 worlds) · `decorations.md` (tank deco
 | 0 | Core loop (2D): market, eggs, growth, feeding, starvation, selling, saving | ✅ |
 | 1 | 3D world: plaza, 8 tanks, market board, swimming fish, pop-up menus | ✅ built, testing |
 | 1b | Economy re-tune (unlocks by sales, harder curve) + egg demand pricing + "growing" counts | ✅ built, testing |
+| 1c | **Tank stages** (Small → Medium → Large → Sea Pen, pie slices toward the sea, by slots 6/10/15/20) · 3 piers (main/east/west) with one boat each, taking turns · phone HUD | ✅ built 2026-11-09 |
 | 2 | Playtest + tune with 3–5 friends (no new features) | ⬜ |
 | 3 | Collection depth: rare variants, fish info on click, **decorations stage 1**, Goldfish + Pufferfish, food sweet spot, species traits, seagull, fishing pier (see below) | ⬜ |
 | 3.5 | **World 2 — Coral Reef** (+ decor stage 2) — only if players reach Koi and want more | ⬜ |
@@ -93,6 +94,26 @@ Benchmarks are rough; Creator Dashboard shows real D1/D7 + session length once l
 | 3 Deep Sea | Megalodon | Darkness / light |
 | 4 Open Ocean | Blue Whale | Migration |
 | 5 Mythic Waters | Leviathan → **The Kraken** | Rituals; **Release the Kraken** = prestige + server event |
+
+## Creature size rule — big creatures need big tanks (decided 2026-11-09)
+
+Real scale (1 stud ≈ 0.28 m). A creature fits a tank stage if its **length ≤ ~70% of the tank length**.
+Tested in Studio with `TestWhale` (server/StudioWhale): orca 28 studs fits the Sea Pen easily,
+humpback 50 fills it (biggest that still looks right), blue whale 90 sticks out onto the plaza.
+
+| Home | Tank length | Max creature | Examples |
+|---|---|---|---|
+| Small Tank (6+ slots) | 10 | ~7 studs | guppy, clownfish |
+| Medium Tank (10+) | 22 | ~15 | salmon, tuna |
+| Large Tank (15+) | 40 | ~28 | stingray, sea turtle, orca |
+| Sea Pen (20+) | 70 | ~50 | sharks, humpback |
+| World 4 ocean bay (own map, netted open sea) | 250+ | 90+ | **blue whale** |
+| World 5 | — | — | **Kraken** is released (event), never kept |
+
+- New species get a `minStage` in Config; buying the egg needs that stage ("Needs a Large Tank").
+- Harbor island stays at 4 stages: a 5th would block the boat routes and swallow the island.
+- Whale-size and myth creatures get their own world homes (mix of real scale + own maps).
+- Anything with `minStage` changes the economy → re-run the progression sim first.
 
 ## Rules
 

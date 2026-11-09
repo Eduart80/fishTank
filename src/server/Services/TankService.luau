@@ -225,7 +225,16 @@ function TankService.buySlot(data)
 		return false, ("A new slot costs %d coins"):format(cost)
 	end
 	data.coins -= cost
+	local oldStage = Config.tankStage(data.slots)
 	data.slots += 1
+	local stage = Config.tankStage(data.slots)
+	if stage > oldStage then
+		return true, ("Your tank grew into a %s! (%d slots)"):format(Config.TANK_STAGES[stage].name, data.slots)
+	end
+	local nextStage = Config.TANK_STAGES[stage + 1]
+	if nextStage then
+		return true, ("Tank upgraded to %d slots · %d more to %s"):format(data.slots, nextStage.minSlots - data.slots, nextStage.name)
+	end
 	return true, ("Tank upgraded to %d slots"):format(data.slots)
 end
 

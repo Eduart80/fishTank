@@ -17,6 +17,17 @@ Config.MAX_SLOTS = 24
 Config.SLOT_BASE_COST = 300
 Config.SLOT_COST_GROWTH = 1.7
 
+-- Tank stages: the tank grows backwards toward the sea inside its own pie slice (8 slices,
+-- never overlap). Front glass never moves. Shape = trapezoid seen from above, in plot-local
+-- studs: front edge at z = -5 (half width 10), back edge at backZ (half width halfBack).
+-- +z points away from the plaza, toward the sea. Visual only: no economy effect.
+Config.TANK_STAGES = {
+	{ name = "Small Tank", minSlots = 6, backZ = 5, halfBack = 10, height = 12 },
+	{ name = "Medium Tank", minSlots = 10, backZ = 17, halfBack = 15, height = 12 },
+	{ name = "Large Tank", minSlots = 15, backZ = 35, halfBack = 22, height = 14 },
+	{ name = "Sea Pen", minSlots = 20, backZ = 65, halfBack = 32, height = 16 },
+}
+
 -- Market
 Config.MARKET_FEE = 0.05 -- 5% of every sale leaves the economy
 
@@ -60,6 +71,13 @@ Config.BOAT = {
 	staySeconds = if RunService:IsStudio() then 120 else 4 * 60,
 	priceMin = 0.75, -- offer = market price x random(priceMin..priceMax): check the board before selling!
 	priceMax = 1.3,
+	-- one boat per pier, each on its own timer. angle = pier turned around the island centre
+	-- (0 = main pier; must match the piers built in WorldService.start)
+	piers = {
+		{ angle = 0, name = "main pier" },
+		{ angle = 90, name = "east pier" },
+		{ angle = -90, name = "west pier" },
+	},
 }
 
 -- Robux shop. id = 0 means "not created yet" (button shows "Not set up").
@@ -98,6 +116,16 @@ end
 
 function Config.slotCost(currentSlots: number): number
 	return math.floor(Config.SLOT_BASE_COST * Config.SLOT_COST_GROWTH ^ (currentSlots - Config.STARTING_SLOTS))
+end
+
+function Config.tankStage(slots: number): number
+	local stage = 1
+	for i, s in Config.TANK_STAGES do
+		if slots >= s.minSlots then
+			stage = i
+		end
+	end
+	return stage
 end
 
 function Config.sizeFromAge(age: number): number

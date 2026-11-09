@@ -323,6 +323,37 @@ test("No slots beyond the max", function(check)
 	check(not TankService.buySlot(d), "went past max")
 end)
 
+test("Tank stages follow slots: 6=Small, 10=Medium, 15=Large, 20+=Sea Pen", function(check)
+	check(Config.tankStage(Config.STARTING_SLOTS) == 1, "start")
+	check(Config.tankStage(9) == 1 and Config.tankStage(10) == 2, "medium at 10")
+	check(Config.tankStage(14) == 2 and Config.tankStage(15) == 3, "large at 15")
+	check(Config.tankStage(19) == 3 and Config.tankStage(20) == 4, "sea pen at 20")
+	check(Config.tankStage(Config.MAX_SLOTS) == #Config.TANK_STAGES, "max slots = last stage")
+end)
+
+test("Buying the 10th slot announces the Medium Tank", function(check)
+	local d = newPlayer(now)
+	d.slots = 9
+	d.coins = Config.slotCost(9)
+	local ok, msg = TankService.buySlot(d)
+	check(ok and string.find(msg, "Medium Tank", 1, true) ~= nil, tostring(msg))
+end)
+
+test("Tank stages never leave their pie slice (8 slices, 10° walkway each side)", function(check)
+	local halfSlice = math.rad(45 / 2 - 5)
+	local plotRadius = 70
+	for i, s in Config.TANK_STAGES do
+		local backR = plotRadius + s.backZ
+		local backCornerAngle = math.atan(s.halfBack / backR)
+		local frontCornerAngle = math.atan(10 / (plotRadius - 5))
+		check(backCornerAngle <= halfSlice and frontCornerAngle <= halfSlice, ("stage %d too wide"):format(i))
+		if i > 1 then
+			local prev = Config.TANK_STAGES[i - 1]
+			check(s.backZ > prev.backZ and s.halfBack >= prev.halfBack, ("stage %d not bigger"):format(i))
+		end
+	end
+end)
+
 -- Market ------------------------------------------------------------------
 test("50 salmon dumped: price drops", function(check)
 	local before = MarketService.getPrice("salmon", now)
@@ -419,6 +450,27 @@ test("Boat pays nothing if you have no matching adults", function(check)
 	local count, paid = TankService.sellToBuyer(d, "salmon", 3, 200)
 	check(count == 0 and paid == 0, "sold a baby")
 	check(#d.fish == 1, "fish removed")
+end)
+
+test("Piers sit in tank gaps facing a straight island edge (0/90/180/270), no duplicates", function(check)
+	local seen = {}
+	for _, pier in Config.BOAT.piers do
+		check(pier.angle % 90 == 0, ("pier at %d° is not on an island edge"):format(pier.angle))
+		local key = pier.angle % 360
+		check(not seen[key], ("two piers at %d°"):format(pier.angle))
+		seen[key] = true
+	end
+	check(seen[0], "main pier (angle 0) missing: the boat path is built for it")
+	-- boats start a moment after the world; wait for the last dock before counting
+	local n = #Config.BOAT.piers
+	workspace.FishWorld:WaitForChild(if n == 1 then "BoatDock" else "BoatDock" .. n, 10)
+	local docks = 0
+	for _, child in workspace.FishWorld:GetChildren() do
+		if string.sub(child.Name, 1, 8) == "BoatDock" then
+			docks += 1
+		end
+	end
+	check(docks == #Config.BOAT.piers, ("%d boat docks for %d piers"):format(docks, #Config.BOAT.piers))
 end)
 
 test("Expensive fish events are capped at x2", function(check)
