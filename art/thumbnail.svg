@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <!-- Fish Tank Market thumbnail (original artwork). Render: node art/render.js thumbnail.svg 1920 1080 -->
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3fd0f5"/>
+      <stop offset="0.5" stop-color="#1580d2"/>
+      <stop offset="1" stop-color="#0a3684"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.55" r="0.6">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb347"/>
+      <stop offset="1" stop-color="#ff6a13"/>
+    </linearGradient>
+    <radialGradient id="coin" cx="0.38" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#fff3a6"/>
+      <stop offset="0.5" stop-color="#ffd23f"/>
+      <stop offset="1" stop-color="#e09a12"/>
+    </radialGradient>
+    <clipPath id="bodyClip"><ellipse cx="0" cy="0" rx="138" ry="92"/></clipPath>
+    <clipPath id="koiClip"><ellipse cx="0" cy="0" rx="120" ry="58"/></clipPath>
+
+    <!-- gold coin, centred on 0,0, radius 70 -->
+    <g id="coinG">
+      <circle r="70" fill="#a8650a"/>
+      <circle r="62" fill="url(#coin)" stroke="#a8650a" stroke-width="6"/>
+      <circle r="44" fill="none" stroke="#e8a51c" stroke-width="6"/>
+      <text x="0" y="24" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="66" fill="#b8740c">$</text>
+      <ellipse cx="-22" cy="-30" rx="18" ry="9" fill="#ffffff" opacity="0.55" transform="rotate(-30 -22 -30)"/>
+    </g>
+  </defs>
+
+  <!-- water -->
+  <rect width="1920" height="1080" fill="url(#sea)"/>
+  <g fill="#ffffff" opacity="0.08">
+    <polygon points="160,0 300,0 120,1080 -40,1080"/>
+    <polygon points="620,0 720,0 600,1080 470,1080"/>
+    <polygon points="1100,0 1240,0 1180,1080 1010,1080"/>
+    <polygon points="1600,0 1700,0 1720,1080 1580,1080"/>
+  </g>
+  <rect width="1920" height="1080" fill="url(#glow)"/>
+
+  <!-- sand + seaweed -->
+  <path d="M0 930 Q 240 880 480 915 T 960 910 T 1440 905 T 1920 895 L1920 1080 L0 1080 Z" fill="#f2d48f"/>
+  <path d="M0 980 Q 300 945 640 972 T 1300 965 T 1920 955 L1920 1080 L0 1080 Z" fill="#e6bf6c"/>
+  <g fill="none" stroke-linecap="round" stroke-width="22">
+    <path d="M90 940 Q 60 860 100 780 T 80 640" stroke="#2f9e57"/>
+    <path d="M140 945 Q 170 870 130 800 T 160 700" stroke="#3cbf6a"/>
+    <path d="M1010 925 Q 980 860 1020 800" stroke="#2f9e57"/>
+    <path d="M1860 920 Q 1890 840 1850 770 T 1880 660" stroke="#3cbf6a"/>
+  </g>
+  <g fill="#8f8fa3" stroke="#5c5c70" stroke-width="6">
+    <ellipse cx="230" cy="935" rx="70" ry="38"/>
+    <ellipse cx="1790" cy="925" rx="58" ry="32"/>
+  </g>
+
+  <!-- title -->
+  <g font-family="Arial Black, Arial, sans-serif" font-weight="900" text-anchor="middle">
+    <text x="960" y="190" font-size="150" fill="#0b2a63" stroke="#0b2a63" stroke-width="34" stroke-linejoin="round">FISH TANK MARKET</text>
+    <text x="960" y="190" font-size="150" fill="#ffffff">FISH TANK MARKET</text>
+  </g>
+  <g transform="translate(960 262)">
+    <rect x="-380" y="-42" width="760" height="76" rx="38" fill="#ffcc33" stroke="#0b2a63" stroke-width="8"/>
+    <text x="0" y="16" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="44" fill="#0b2a63">GROW • TRADE • GET RICH!</text>
+  </g>
+
+  <!-- big clownfish (left) -->
+  <g transform="translate(520 630) rotate(-8) scale(1.55)">
+    <path d="M-120 0 L-205 -72 Q -188 0 -205 72 Z" fill="#ff7a1a" stroke="#4a1d00" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M-40 -84 Q 0 -150 70 -86 Z" fill="#ff7a1a" stroke="#4a1d00" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M-10 84 Q 20 130 60 82 Z" fill="#ff7a1a" stroke="#4a1d00" stroke-width="10" stroke-linejoin="round"/>
+    <ellipse cx="0" cy="0" rx="138" ry="92" fill="url(#body)"/>
+    <g clip-path="url(#bodyClip)">
+      <path d="M-70 -110 Q -40 0 -70 110 L -30 110 Q -2 0 -30 -110 Z" fill="#ffffff" stroke="#4a1d00" stroke-width="7"/>
+      <path d="M38 -110 Q 64 0 38 110 L 72 110 Q 98 0 72 -110 Z" fill="#ffffff" stroke="#4a1d00" stroke-width="7"/>
+      <ellipse cx="-10" cy="-48" rx="90" ry="22" fill="#ffffff" opacity="0.22"/>
+    </g>
+    <ellipse cx="0" cy="0" rx="138" ry="92" fill="none" stroke="#4a1d00" stroke-width="10"/>
+    <path d="M-6 18 Q 30 30 18 64 Q -10 52 -6 18 Z" fill="#ff8f2e" stroke="#4a1d00" stroke-width="7" stroke-linejoin="round"/>
+    <circle cx="96" cy="-20" r="30" fill="#ffffff" stroke="#4a1d00" stroke-width="7"/>
+    <circle cx="104" cy="-18" r="16" fill="#1a1a1a"/>
+    <circle cx="110" cy="-25" r="6" fill="#ffffff"/>
+    <path d="M116 30 Q 128 40 136 28" fill="none" stroke="#4a1d00" stroke-width="7" stroke-linecap="round"/>
+    <ellipse cx="84" cy="22" rx="12" ry="7" fill="#ff4f5a" opacity="0.55"/>
+  </g>
+
+  <!-- koi (bottom left, swimming right) -->
+  <g transform="translate(330 860) rotate(-4) scale(0.95)">
+    <path d="M-105 0 L-175 -55 Q -158 0 -175 55 Z" fill="#ffffff" stroke="#3a2a2a" stroke-width="8" stroke-linejoin="round"/>
+    <ellipse cx="0" cy="0" rx="120" ry="58" fill="#ffffff"/>
+    <g clip-path="url(#koiClip)">
+      <ellipse cx="-30" cy="-30" rx="45" ry="32" fill="#e8442e"/>
+      <ellipse cx="50" cy="10" rx="32" ry="26" fill="#e8442e"/>
+      <ellipse cx="-70" cy="25" rx="22" ry="16" fill="#1f1f1f"/>
+    </g>
+    <ellipse cx="0" cy="0" rx="120" ry="58" fill="none" stroke="#3a2a2a" stroke-width="8"/>
+    <circle cx="86" cy="-12" r="13" fill="#1a1a1a"/>
+    <circle cx="90" cy="-16" r="4" fill="#ffffff"/>
+    <path d="M118 8 Q 140 20 150 40" fill="none" stroke="#3a2a2a" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- guppies -->
+  <g transform="translate(860 470) scale(0.5)">
+    <path d="M-60 0 L-130 -50 Q -110 0 -130 50 Z" fill="#ff4fa8" stroke="#5a1037" stroke-width="10" stroke-linejoin="round"/>
+    <ellipse rx="80" ry="44" fill="#ffaa3c" stroke="#5a1037" stroke-width="10"/>
+    <circle cx="44" cy="-8" r="13" fill="#1a1a1a"/>
+  </g>
+  <g transform="translate(940 560) scale(0.38)">
+    <path d="M-60 0 L-130 -50 Q -110 0 -130 50 Z" fill="#ff4fa8" stroke="#5a1037" stroke-width="10" stroke-linejoin="round"/>
+    <ellipse rx="80" ry="44" fill="#ffaa3c" stroke="#5a1037" stroke-width="10"/>
+    <circle cx="44" cy="-8" r="13" fill="#1a1a1a"/>
+  </g>
+
+  <!-- market board (right) -->
+  <g transform="translate(1110 360)">
+    <rect x="0" y="0" width="700" height="520" rx="34" fill="#0e1c2c" stroke="#ffffff" stroke-width="8" stroke-opacity="0.85"/>
+    <text x="350" y="72" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="52" fill="#ffffff">LIVE MARKET</text>
+    <g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="40">
+      <rect x="40" y="116" width="12" height="44" rx="4" fill="#ffaa3c"/>
+      <text x="70" y="152" fill="#ffffff">Guppy</text>
+      <text x="470" y="152" fill="#ffffff" text-anchor="end">17</text>
+      <text x="660" y="152" fill="#3ee37e" text-anchor="end">▲ 9%</text>
+
+      <rect x="40" y="196" width="12" height="44" rx="4" fill="#ff6e28"/>
+      <text x="70" y="232" fill="#ffffff">Clownfish</text>
+      <text x="470" y="232" fill="#ffffff" text-anchor="end">63</text>
+      <text x="660" y="232" fill="#f05a5a" text-anchor="end">▼ 1%</text>
+
+      <rect x="40" y="276" width="12" height="44" rx="4" fill="#fa8072"/>
+      <text x="70" y="312" fill="#ffffff">Salmon</text>
+      <text x="470" y="312" fill="#ffffff" text-anchor="end">201</text>
+      <text x="660" y="312" fill="#f05a5a" text-anchor="end">▼ 19%</text>
+
+      <rect x="40" y="356" width="12" height="44" rx="4" fill="#5a8cdc"/>
+      <text x="70" y="392" fill="#ffffff">Tuna</text>
+      <text x="470" y="392" fill="#ffffff" text-anchor="end">919</text>
+      <text x="660" y="392" fill="#3ee37e" text-anchor="end">▲ 35%</text>
+
+      <rect x="40" y="436" width="12" height="44" rx="4" fill="#f5f5f5"/>
+      <text x="70" y="472" fill="#ffffff">Koi</text>
+      <text x="470" y="472" fill="#ffffff" text-anchor="end">3,476</text>
+      <text x="660" y="472" fill="#3ee37e" text-anchor="end">▲ 13%</text>
+    </g>
+  </g>
+
+
+  <!-- coins -->
+  <use href="#coinG" transform="translate(1030 360) scale(0.9)"/>
+  <use href="#coinG" transform="translate(1835 900) scale(0.75)"/>
+  <use href="#coinG" transform="translate(790 820) scale(0.6)"/>
+  <use href="#coinG" transform="translate(205 350) scale(0.7)"/>
+
+  <!-- bubbles -->
+  <g fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-width="5" stroke-opacity="0.8">
+    <circle cx="830" cy="560" r="22"/>
+    <circle cx="870" cy="480" r="13"/>
+    <circle cx="815" cy="430" r="9"/>
+    <circle cx="1000" cy="660" r="16"/>
+    <circle cx="60" cy="520" r="18"/>
+    <circle cx="1880" cy="380" r="14"/>
+  </g>
+</svg>
