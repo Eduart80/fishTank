@@ -74,6 +74,20 @@ Never: big coin packs, gear that catches better fish (paid players would wreck t
 Maybe later (only after playtest + analytics show the market is healthy): small coin packs, capped
 (e.g. 1,000 coins, max 1 per day), or Robux tank slots capped at +2. Decided 2026-11-09.
 
+**Live Robux products (2026-11-09):** Auto-Feeder pass 2076124464 · Grow Boost 3729887473 · Starter Pack 3730113426 ·
+Neon Palm 3730113254 · Treasure Chest 3730113317 · Golden Fish Statue 3730113388 (Managed pricing ON for all).
+
+**Next monetization ideas to discuss (user asked to keep these, 2026-11-09)** — all "time & show-off, never market power":
+
+| Idea | Type | Why players buy |
+|---|---|---|
+| Extra tank slot (capped at +2 total) | Developer Product | Impatience; fish still grow at normal speed |
+| Tank themes (Coral Pink, Night Glow, Pirate Ship) | Developer Product | Show-off: sand, glass tint, decor colours |
+| Title above head ("Fish Tycoon", "Koi King") | Developer Product | Show-off, visible everywhere |
+| More Robux patio items (Neon Sign with your name, Pirate Flag, Golden Chair) | Developer Product | Show-off; system already exists |
+| VIP Game Pass (gold name, +1 patio spot, VIP chat tag) | Game Pass | One-time, small perks |
+| Premium Payouts | Automatic | Roblox pays for Premium players' time; just keep players playing |
+
 ## Will players come back? — measure, don't guess
 
 Funnel events (AnalyticsService) to see **where** players quit:
