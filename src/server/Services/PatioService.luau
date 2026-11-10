@@ -74,16 +74,17 @@ function PatioService.place(data, spot, itemId, colorKey)
 	else
 		colorKey = nil
 	end
-	if (data.inventory[item.id] or 0) <= 0 then
-		return false, "You don't have a " .. item.name .. " yet"
-	end
 	local old = data.patio[key]
 	if old == item.id then
+		-- same item already on this spot: only a recolour is allowed (needs no item in the inventory)
 		if colorKey and data.patioColors[key] ~= colorKey then
 			data.patioColors[key] = colorKey -- same flag, new colour: no inventory change
 			return true, ("%s is now %s"):format(item.name, Config.PatioColorByKey[colorKey].name)
 		end
 		return false, item.name .. " is already there"
+	end
+	if (data.inventory[item.id] or 0) <= 0 then
+		return false, "You don't have a " .. item.name .. " yet"
 	end
 	if old and (data.inventory[old] or 0) >= Config.PATIO_MAX_OWNED then
 		return false, "Pick up what's there first (your inventory is full of those)"

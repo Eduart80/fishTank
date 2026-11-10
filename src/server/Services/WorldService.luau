@@ -22,7 +22,11 @@ local WorldService = {}
 
 local PLOT_COUNT = 8
 local PLOT_RADIUS = 70
-local FLOOR_Y = 0.4
+-- Ground level for everything built on the island (plaza top, tanks, piers, store, patios).
+-- MEASURED in Studio (GroundCheck, 2026-11-09): the island terrain sand surface is at y = 2.0
+-- (terrain rounds to 4-stud voxels), so the floor sits just above it. Was 0.4 = things sank 1.6.
+local FLOOR_Y = 2.1
+local ISLAND_SAND_TOP = 0 -- what we ask terrain for; it renders the surface at 2.0 (see above)
 local TANK_W, TANK_H, TANK_D = 20, 12, 10
 local STAND_H = 3
 
@@ -474,12 +478,10 @@ local function buildSea()
 	local bottom = SEA_LEVEL - SEA_DEPTH
 	terrain:FillBlock(CFrame.new(0, SEA_LEVEL - SEA_DEPTH / 2, 0), Vector3.new(SEA_SIZE, SEA_DEPTH, SEA_SIZE), Enum.Material.Water)
 	terrain:FillBlock(CFrame.new(0, bottom - 4, 0), Vector3.new(SEA_SIZE, 8, SEA_SIZE), Enum.Material.Sand) -- sea floor
-	local islandTop = FLOOR_Y - 0.4
+	-- island: top kept at ISLAND_SAND_TOP on purpose (NOT tied to FLOOR_Y): terrain rounds it to a
+	-- surface at y = 2.0, and FLOOR_Y is set just above that measured surface
+	local islandTop = ISLAND_SAND_TOP
 	terrain:FillBlock(CFrame.new(0, (islandTop + bottom) / 2, 0), Vector3.new(ISLAND_SIZE, islandTop - bottom, ISLAND_SIZE), Enum.Material.Sand)
-	-- Terrain works in 4-stud voxels, so the sand above came out ~1.5 studs HIGHER than the plaza and
-	-- buried the bottoms of tank stands and patio items. Clear every voxel from y = 0 up, so the sand
-	-- can never rise above the plaza floor (FLOOR_Y = 0.4). Voxel-aligned (0..32) so nothing is half-cleared.
-	terrain:FillBlock(CFrame.new(0, 16, 0), Vector3.new(ISLAND_SIZE + 8, 32, ISLAND_SIZE + 8), Enum.Material.Air)
 end
 
 -- Fishing pier (visual only for now; fishing itself is a phase 3 feature) ----
@@ -777,6 +779,38 @@ function WorldService.start()
 	buildStore(world)
 	buildPalms(world)
 	world.Parent = workspace
+
+	-- STUDIO ONLY ground check: what is the floor made of, and how high is it, at a few spots?
+	-- (patio items / tank stands were sinking; expected: everything on the plaza at y = 0.4)
+	if game:GetService("RunService"):IsStudio() then
+		task.delay(3, function()
+			local plot1 = plots[1]
+			local spots = {
+				{ "plaza centre", Vector3.new(0, 0, 10) },
+				{ "tank 1 patio", (plot1.cf * CFrame.new(15, 0, -10)).Position },
+				{ "tank 1 front", (plot1.cf * CFrame.new(0, 0, -12)).Position },
+				{ "beach strip", Vector3.new(0, 0, -105) },
+			}
+			print("[GroundCheck] plaza part top should be", FLOOR_Y, "| build marker: ground-v4 (expect terrain 2.0, floor parts 2.1)")
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Exclude
+			local ignore = {}
+			for _, p in game:GetService("Players"):GetPlayers() do
+				if p.Character then
+					table.insert(ignore, p.Character)
+				end
+			end
+			params.FilterDescendantsInstances = ignore
+			for _, s in spots do
+				local hit = workspace:Raycast(Vector3.new(s[2].X, 80, s[2].Z), Vector3.new(0, -160, 0), params)
+				if hit then
+					print(("[GroundCheck] %-13s y = %.2f  hit %s (%s)"):format(s[1], hit.Position.Y, hit.Instance:GetFullName(), hit.Material.Name))
+				else
+					print(("[GroundCheck] %-13s nothing below"):format(s[1]))
+				end
+			end
+		end)
+	end
 end
 
 local function sendHome(player: Player, plot)
