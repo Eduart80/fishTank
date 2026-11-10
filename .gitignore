@@ -2,3 +2,5 @@ tools/
 *.rbxl.lock
 *.rbxlx.lock
 sourcemap.json
+.env
+roblox_backup_codes.txt
