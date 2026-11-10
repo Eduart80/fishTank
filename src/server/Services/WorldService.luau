@@ -850,7 +850,7 @@ end
 
 function WorldService.updatePatio(player: Player, patio, colors)
 	local plot = plotOf[player]
-	if plot then
+	if plot and not plot.stress then
 		WorldService.showPatio(plot, patio or {}, colors or {})
 	end
 end
@@ -858,7 +858,7 @@ end
 -- Grows (or, for a new owner, resets) the tank to match the owner's slot count.
 function WorldService.updateTankStage(player: Player, slots: number)
 	local plot = plotOf[player]
-	if plot then
+	if plot and not plot.stress then
 		setStage(plot, Config.tankStage(slots))
 	end
 end
@@ -896,7 +896,7 @@ end
 -- Publishes the visible fish list for this player's tank (only if it changed).
 function WorldService.updateFish(player: Player, data, now: number)
 	local plot = plotOf[player]
-	if not plot then
+	if not plot or plot.stress then
 		return
 	end
 	local hungry = now >= data.fedUntil
@@ -938,6 +938,32 @@ function WorldService.updateBoard(snapshot)
 		boardEvent.Text = table.concat(parts, " · ")
 	else
 		boardEvent.Text = ""
+	end
+end
+
+-- STUDIO ONLY worst-case load test (server/StudioStress): every tank becomes a Sea Pen full of
+-- fully grown Koi with 3 tiki torches + an umbrella on its patio. 0 = back to normal: unowned
+-- tanks reset, owned ones are restored by the next 5-second tick (real player data is untouched).
+function WorldService.setStress(fishPerTank: number)
+	local on = fishPerTank > 0
+	for _, plot in plots do
+		plot.stress = on
+		if on then
+			setStage(plot, #Config.TANK_STAGES)
+			local list = {}
+			for k = 1, fishPerTank do
+				table.insert(list, { u = 900000 + plot.index * 1000 + k, s = "koi", a = Config.MAX_AGE, h = false })
+			end
+			plot.fishValue.Value = HttpService:JSONEncode(list)
+			WorldService.showPatio(plot, { s1 = "torch", s2 = "torch", s3 = "torch", s4 = "umbrella" }, {})
+		else
+			plot.lastJson = "" -- forces the owner's real fish to be published again
+			if not plot.owner then
+				plot.fishValue.Value = "[]"
+				setStage(plot, 1)
+				WorldService.showPatio(plot, {}, {})
+			end
+		end
 	end
 end
 
