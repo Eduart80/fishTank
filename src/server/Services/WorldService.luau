@@ -476,6 +476,10 @@ local function buildSea()
 	terrain:FillBlock(CFrame.new(0, bottom - 4, 0), Vector3.new(SEA_SIZE, 8, SEA_SIZE), Enum.Material.Sand) -- sea floor
 	local islandTop = FLOOR_Y - 0.4
 	terrain:FillBlock(CFrame.new(0, (islandTop + bottom) / 2, 0), Vector3.new(ISLAND_SIZE, islandTop - bottom, ISLAND_SIZE), Enum.Material.Sand)
+	-- Terrain works in 4-stud voxels, so the sand above came out ~1.5 studs HIGHER than the plaza and
+	-- buried the bottoms of tank stands and patio items. Clear every voxel from y = 0 up, so the sand
+	-- can never rise above the plaza floor (FLOOR_Y = 0.4). Voxel-aligned (0..32) so nothing is half-cleared.
+	terrain:FillBlock(CFrame.new(0, 16, 0), Vector3.new(ISLAND_SIZE + 8, 32, ISLAND_SIZE + 8), Enum.Material.Air)
 end
 
 -- Fishing pier (visual only for now; fishing itself is a phase 3 feature) ----
@@ -757,7 +761,8 @@ function WorldService.start()
 		end
 	end
 
-	part({ Name = "Plaza", Size = Vector3.new(190, 0.4, 190), CFrame = CFrame.new(0, FLOOR_Y - 0.2, 0), Material = Enum.Material.Concrete, Color = COLORS.floor, Parent = world })
+	-- the plaza is now the visible ground (terrain sand sits just under it), so it looks like sand
+	part({ Name = "Plaza", Size = Vector3.new(190, 0.4, 190), CFrame = CFrame.new(0, FLOOR_Y - 0.2, 0), Material = Enum.Material.Sand, Color = Color3.fromRGB(232, 218, 178), Parent = world })
 
 	local plotsFolder = Instance.new("Folder")
 	plotsFolder.Name = "Plots"
