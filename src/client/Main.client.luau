@@ -169,10 +169,10 @@ shopToggle.BackgroundColor3 = Color3.fromRGB(40, 160, 90)
 -- x / leftOffset: the market panel starts right of the icon buttons
 local function panel(x: number, leftOffset: number, title: string)
 	local frame = make("Frame", { BackgroundColor3 = C.panel, Position = UDim2.new(x, leftOffset, 0, 64), Size = UDim2.new(0.47, -leftOffset, 1, -76), Parent = gui }, { corner() })
-	-- round ✕ on the top-right corner (sits half outside, so it never covers header buttons)
+	-- round X on the top-right corner (sits half outside, so it never covers header buttons)
 	local close = make("TextButton", {
 		Name = "Close",
-		Text = "✕",
+		Text = "X", -- plain letter: the ✕ symbol is missing from the font (showed as a box)
 		Font = FONT_BOLD,
 		TextScaled = true,
 		TextColor3 = C.text,
