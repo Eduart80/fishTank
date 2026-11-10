@@ -87,6 +87,19 @@ function TankService.buyEgg(data, speciesId: string, now: number)
 	return true, ("Bought a %s egg for %d"):format(species.name, price)
 end
 
+-- A free egg (Starter Pack). No price, no unlock check, no market egg demand. false = tank full.
+function TankService.giveEgg(data, speciesId: string, now: number): boolean
+	if not Config.ById[speciesId] or #data.fish >= data.slots then
+		return false
+	end
+	if #data.fish == 0 and data.fedUntil < now then
+		data.fedUntil = now + Config.real(Config.EMPTY_TANK_FREE_FEED_HOURS * 3600)
+	end
+	table.insert(data.fish, { uid = data.nextUid, species = speciesId, age = 0, born = now, lastUpdate = now })
+	data.nextUid += 1
+	return true
+end
+
 -- Coins per (game) hour of food for the current tank
 local function feedCostPerHour(data): number
 	local cost = 0
@@ -263,6 +276,7 @@ function TankService.publicState(data, now: number)
 		stats = data.stats,
 		autoFeeder = data.autoFeeder == true,
 		boostUntil = data.boostUntil or 0,
+		starterPack = data.starterPack == true,
 	}
 end
 

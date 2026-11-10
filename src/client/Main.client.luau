@@ -594,6 +594,8 @@ for i, item in Config.ROBUX do
 			else
 				MarketplaceService:PromptGamePassPurchase(player, item.id)
 			end
+		elseif item.once and tank and tank[item.key] then
+			showToast("You already got the " .. item.name) -- one per player
 		else
 			MarketplaceService:PromptProductPurchase(player, item.id)
 		end
@@ -604,7 +606,7 @@ local function renderShop()
 	local now = serverNow()
 	for key, card in shopCards do
 		local item = card.item
-		local owned = item.kind == "pass" and tank ~= nil and tank[key] == true
+		local owned = (item.kind == "pass" or item.once) and tank ~= nil and tank[key] == true
 		if item.id == 0 then
 			card.buy.Text = "Not set up"
 			card.buy.BackgroundColor3 = C.buttonOff

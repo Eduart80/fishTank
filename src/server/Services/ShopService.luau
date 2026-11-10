@@ -57,6 +57,31 @@ local function grantProduct(item, data, now: number)
 		return function()
 			data.boostUntil = before
 		end, "Grow Boost active: your fish grow 2x faster!"
+	elseif item.key == "starterPack" then
+		-- 500 coins + Beach Umbrella + a Clownfish egg (if the tank is full: the egg's price in coins).
+		-- If someone somehow buys it twice they still get it: they paid, we never keep Robux for nothing.
+		TankService.settle(data, now)
+		local before = { coins = data.coins, owned = data.starterPack, fishCount = #data.fish, nextUid = data.nextUid, fedUntil = data.fedUntil }
+		data.coins += item.coins
+		data.inventory = data.inventory or {}
+		data.inventory[item.item] = (data.inventory[item.item] or 0) + 1
+		local gotEgg = TankService.giveEgg(data, item.egg, now)
+		local eggSpecies = Config.ById[item.egg]
+		if not gotEgg then
+			data.coins += eggSpecies.eggPrice
+		end
+		data.starterPack = true
+		return function()
+			data.coins = before.coins
+			data.starterPack = before.owned
+			PatioService.take(data, item.item)
+			while #data.fish > before.fishCount do
+				table.remove(data.fish)
+			end
+			data.nextUid = before.nextUid
+			data.fedUntil = before.fedUntil
+		end, if gotEgg then ("Starter Pack: +%d coins, a Beach Umbrella and a %s egg in your tank!"):format(item.coins, eggSpecies.name)
+			else ("Starter Pack: +%d coins and a Beach Umbrella! Tank full, so +%d coins instead of the egg."):format(item.coins, eggSpecies.eggPrice)
 	elseif item.key == "patio" then
 		-- goes to the inventory like a coin purchase; if it's full (10 of that item) we still grant
 		-- it: they paid Robux, so the cap must never eat a purchase

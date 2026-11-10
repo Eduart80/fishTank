@@ -549,6 +549,30 @@ test("Every store item has a price XOR a Robux id, and a 3D model", function(che
 end)
 
 -- Robux items -------------------------------------------------------------
+test("Starter Pack: free egg goes in the tank (no price, no unlock); full tank refuses it", function(check)
+	local d = newPlayer(now)
+	local coins = d.coins
+	check(TankService.giveEgg(d, "clownfish", now), "egg refused")
+	check(#d.fish == 1 and d.fish[1].species == "clownfish" and d.coins == coins, "egg wrong or charged")
+	d.slots = #d.fish
+	check(not TankService.giveEgg(d, "guppy", now), "egg added to a full tank")
+	check(not TankService.giveEgg(d, "notAFish", now), "unknown species accepted")
+end)
+
+test("Robux ids are filled in and the Starter Pack is one per player", function(check)
+	local starter = nil
+	for _, item in Config.ROBUX do
+		check(item.id ~= 0, item.key .. " has no id")
+		if item.key == "starterPack" then
+			starter = item
+		end
+	end
+	check(starter ~= nil and starter.once == true and Config.PatioById[starter.item] ~= nil and Config.ById[starter.egg] ~= nil, "starter pack config broken")
+	for _, item in Config.PATIO_ITEMS do
+		check(item.robuxId == nil or item.robuxId ~= 0, item.id .. " Robux id missing")
+	end
+end)
+
 test("Auto-Feeder: fish never starve, even a week offline", function(check)
 	local d = newPlayer(now)
 	d.autoFeeder = true

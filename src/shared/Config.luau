@@ -86,6 +86,8 @@ Config.BOAT = {
 --   kind "product" = Developer Product, can be bought again and again
 Config.GROW_BOOST_MULT = 2
 Config.ROBUX = {
+	-- once = one per player (hidden as Owned after). Contents are granted by server/ShopService.
+	{ key = "starterPack", kind = "product", id = 3730113426, once = true, name = "Starter Pack", text = "500 coins + Beach Umbrella + a Clownfish egg. One per player!", coins = 500, item = "umbrella", egg = "clownfish" },
 	{ key = "autoFeeder", kind = "pass", id = 2076124464, name = "Auto-Feeder", text = "Your fish never go hungry, even while you are offline." },
 	{ key = "growBoost", kind = "product", id = 3729887473, name = "Grow Boost (1 hour)", text = "All your fish grow 2x faster for 1 hour. Buy again to add time.", seconds = 3600 },
 }
@@ -105,9 +107,9 @@ Config.PATIO_ITEMS = {
 	{ id = "umbrella", name = "Beach Umbrella", price = 200, text = "Big red and white sun umbrella." },
 	{ id = "pottedPalm", name = "Potted Palm", price = 250, text = "A little palm tree in a clay pot." },
 	{ id = "sandcastle", name = "Sandcastle", price = 400, text = "Towers, walls and a tiny flag." },
-	{ id = "neonPalm", name = "Neon Palm", robuxId = 0, text = "Glowing palm tree, shines at night." },
-	{ id = "treasure", name = "Treasure Chest", robuxId = 0, text = "Open chest full of gold, sparkling." },
-	{ id = "goldenFish", name = "Golden Fish Statue", robuxId = 0, text = "Shiny gold fish on a stone pedestal." },
+	{ id = "neonPalm", name = "Neon Palm", robuxId = 3730113254, text = "Glowing palm tree, shines at night." },
+	{ id = "treasure", name = "Treasure Chest", robuxId = 3730113317, text = "Open chest full of gold, sparkling." },
+	{ id = "goldenFish", name = "Golden Fish Statue", robuxId = 3730113388, text = "Shiny gold fish on a stone pedestal." },
 }
 Config.PatioById = {}
 for _, item in Config.PATIO_ITEMS do
