@@ -50,20 +50,49 @@ builders.flag = function(m, cf, color: Color3?)
 	p(m, { Size = Vector3.new(3.8, 0.6, 0.12), CFrame = cf * CFrame.new(2.05, 8.6, 0), Color = WHITE, Material = Enum.Material.Fabric })
 end
 
+-- Deck chair, front (-Z) faces the plaza. Wooden frame, blue/white striped seat + backrest,
+-- backrest leans BACK (+Z), small pillow on top. The Seat part is real: players can sit.
 builders.chair = function(m, cf)
-	local seat = p(m, { ClassName = "Seat", Size = Vector3.new(2.6, 0.4, 2.6), CFrame = cf * CFrame.new(0, 1.3, 0), Color = Color3.fromRGB(40, 120, 200), Material = Enum.Material.Fabric, CanCollide = true })
-	seat.Name = "Seat"
-	-- backrest tilted back (behind the seat = +Z, the front faces the plaza)
-	p(m, { Size = Vector3.new(2.6, 3, 0.3), CFrame = cf * CFrame.new(0, 2.6, 1.35) * CFrame.Angles(math.rad(-20), 0, 0), Color = Color3.fromRGB(40, 120, 200), Material = Enum.Material.Fabric })
-	for _, x in { -0.9, 0, 0.9 } do -- white stripes
-		p(m, { Size = Vector3.new(0.3, 3.02, 0.32), CFrame = cf * CFrame.new(x, 2.6, 1.35) * CFrame.Angles(math.rad(-20), 0, 0), Color = WHITE, Material = Enum.Material.Fabric })
-	end
-	for _, x in { -1.3, 1.3 } do
-		for _, z in { -1.2, 1.2 } do
-			p(m, { Size = Vector3.new(0.2, 1.2, 0.2), CFrame = cf * CFrame.new(x, 0.6, z), Color = WOOD })
+	local BLUE = Color3.fromRGB(40, 120, 200)
+	local TILT = math.rad(22) -- + about X = top of the backrest goes toward +Z (backwards)
+	local SEAT_TOP = 1.6
+
+	-- frame: 4 legs, side rails under the seat, armrests on supports
+	for _, x in { -1.45, 1.45 } do
+		for _, z in { -1.2, 1.15 } do
+			p(m, { Name = "Leg", Size = Vector3.new(0.35, SEAT_TOP - 0.2, 0.35), CFrame = cf * CFrame.new(x, (SEAT_TOP - 0.2) / 2, z), Color = WOOD, Material = Enum.Material.Wood, CanCollide = true })
 		end
-		p(m, { Size = Vector3.new(0.2, 0.2, 2.6), CFrame = cf * CFrame.new(x, 2, 0), Color = WOOD }) -- armrest
+		p(m, { Name = "Rail", Size = Vector3.new(0.3, 0.3, 2.75), CFrame = cf * CFrame.new(x, SEAT_TOP - 0.35, 0), Color = WOOD, Material = Enum.Material.Wood })
+		p(m, { Name = "ArmSupport", Size = Vector3.new(0.25, 0.8, 0.25), CFrame = cf * CFrame.new(x, SEAT_TOP + 0.4, -1.1), Color = WOOD, Material = Enum.Material.Wood })
+		p(m, { Name = "Armrest", Size = Vector3.new(0.4, 0.22, 2.5), CFrame = cf * CFrame.new(x, SEAT_TOP + 0.85, -0.05), Color = DARK_WOOD, Material = Enum.Material.Wood })
 	end
+	p(m, { Name = "FrontBar", Size = Vector3.new(2.9, 0.25, 0.3), CFrame = cf * CFrame.new(0, 0.45, -1.2), Color = WOOD, Material = Enum.Material.Wood })
+
+	-- seat cushion (the real Seat) with white stripes on top
+	local seat = p(m, { ClassName = "Seat", Size = Vector3.new(2.6, 0.4, 2.5), CFrame = cf * CFrame.new(0, SEAT_TOP - 0.2, 0), Color = BLUE, Material = Enum.Material.Fabric, CanCollide = true })
+	seat.Name = "Seat"
+	for _, x in { -0.78, 0, 0.78 } do
+		p(m, { Name = "SeatStripe", Size = Vector3.new(0.32, 0.04, 2.5), CFrame = cf * CFrame.new(x, SEAT_TOP + 0.02, 0), Color = WHITE, Material = Enum.Material.Fabric, CanTouch = false, CanQuery = false })
+	end
+
+	-- backrest: hinged at the back of the seat, 5 slats alternating blue / white
+	local hinge = cf * CFrame.new(0, SEAT_TOP, 1.2) * CFrame.Angles(TILT, 0, 0)
+	local BACK_H = 3.2
+	for k = 0, 4 do
+		local x = -1.04 + k * 0.52
+		p(m, { Name = "BackSlat", Size = Vector3.new(0.52, BACK_H, 0.22), CFrame = hinge * CFrame.new(x, BACK_H / 2, 0), Color = if k % 2 == 0 then BLUE else WHITE, Material = Enum.Material.Fabric })
+	end
+	for _, x in { -1.38, 1.38 } do
+		p(m, { Name = "BackPost", Size = Vector3.new(0.25, BACK_H + 0.2, 0.3), CFrame = hinge * CFrame.new(x, BACK_H / 2, 0.05), Color = WOOD, Material = Enum.Material.Wood })
+		-- back legs go from the backrest down to the ground (makes it look like a real deck chair)
+		p(m, { Name = "BackLeg", Size = Vector3.new(0.25, 1.9, 0.25), CFrame = cf * CFrame.new(x, 0.9, 1.75) * CFrame.Angles(math.rad(-25), 0, 0), Color = WOOD, Material = Enum.Material.Wood })
+	end
+	p(m, { Name = "TopBar", Size = Vector3.new(3, 0.3, 0.35), CFrame = hinge * CFrame.new(0, BACK_H + 0.05, 0.05), Color = WOOD, Material = Enum.Material.Wood })
+	-- little white pillow at the top of the backrest
+	local pillow = p(m, { Name = "Pillow", Size = Vector3.new(1.6, 0.55, 0.5), CFrame = hinge * CFrame.new(0, BACK_H - 0.45, -0.3), Color = WHITE, Material = Enum.Material.Fabric })
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = pillow
 end
 
 builders.torch = function(m, cf)
