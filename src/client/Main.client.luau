@@ -222,6 +222,10 @@ shopFrame.Visible = false
 storeFrame.Visible = false
 local sellAllButton = button({ Text = "Sell all adults", Position = UDim2.new(0.5, 0, 0, 6), Size = UDim2.new(0.27, -4, 0, 28), Parent = tankFrame })
 local slotButton = button({ Text = "+ Slot", Position = UDim2.new(0.77, 0, 0, 6), Size = UDim2.new(0.23, -8, 0, 28), Parent = tankFrame })
+-- one line under the header: what the next slot buys you (button is too narrow for it)
+local slotHint = label({ Text = "", TextColor3 = Color3.fromRGB(255, 215, 120), Position = UDim2.new(0, 12, 0, 36), Size = UDim2.new(1, -24, 0, 18), MaxText = 15, Parent = tankFrame })
+tankList.Position = UDim2.new(0, 8, 0, 58)
+tankList.Size = UDim2.new(1, -16, 1, -66)
 
 local toast = label({
 	Font = FONT_BOLD,
@@ -505,7 +509,17 @@ local function renderTank()
 
 
 	tankTitle.Text = ("%s %d/%d"):format(Config.TANK_STAGES[Config.tankStage(tank.slots)].name, #tank.fish, tank.slots)
-	slotButton.Text = if tank.slots >= tank.maxSlots then "Max" else ("+Slot %s"):format(fmt(tank.slotCost))
+	slotButton.Text = if tank.slots >= tank.maxSlots then "Max Slots" else ("+1 Slot: %s"):format(fmt(tank.slotCost))
+	local stage = Config.tankStage(tank.slots)
+	local nextStage = Config.TANK_STAGES[stage + 1]
+	if nextStage then
+		local more = nextStage.minSlots - tank.slots
+		slotHint.Text = ("%d more slot%s to unlock the %s"):format(more, if more == 1 then "" else "s", nextStage.name)
+	elseif tank.slots < tank.maxSlots then
+		slotHint.Text = ("Biggest tank! %d more slot%s for fish"):format(tank.maxSlots - tank.slots, if tank.maxSlots - tank.slots == 1 then "" else "s")
+	else
+		slotHint.Text = "Biggest tank, every slot bought"
+	end
 
 	local seen = {}
 	for order, fish in tank.fish do
