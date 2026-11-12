@@ -199,6 +199,96 @@ test("Away for a week with no food: everything dead, nothing negative", function
 	check(d.coins >= 0, "coins negative")
 end)
 
+-- Offline pause + welcome back ---------------------------------------------
+test("Offline grace: the first time, no fish starves while away; growth stops when food runs out", function(check)
+	local d = newPlayer(now)
+	d.fedUntil = later(now, 1)
+	addFish(d, "guppy", 0, now)
+	TankService.settle(d, now) -- player leaves now (lastSeen = now)
+	local back = later(now, 24 * 7)
+	local away = TankService.beginReturn(d, back)
+	local died = TankService.settle(d, back)
+	check(#died == 0 and #d.fish == 1, "guppy died offline")
+	local grownBy = Config.real(1 * H) * Config.TIME_SCALE / Config.ById.guppy.growSeconds -- 1h of food
+	check(math.abs(d.fish[1].age - math.min(grownBy, Config.MAX_AGE)) < 0.01, "grew past the food: " .. d.fish[1].age)
+	check(TankService.awaySummary(d, back, away) ~= nil, "no welcome-back text")
+end)
+
+test("Offline pause: the starve clock keeps the online hungry time and resumes after return", function(check)
+	local d = newPlayer(now)
+	d.fedUntil = now
+	addFish(d, "guppy", 1, now)
+	TankService.settle(d, later(now, 10)) -- 10h hungry while online, then leaves
+	local back = later(now, 100)
+	TankService.beginReturn(d, back)
+	check(#TankService.settle(d, back) == 0, "died on return")
+	check(#TankService.settle(d, back + Config.real(1.5 * H)) == 0, "died before 12h online hunger")
+	check(#TankService.settle(d, back + Config.real(2.5 * H)) == 1, "never starved online")
+end)
+
+test("Offline grace is one-time: the second time away, hungry fish starve", function(check)
+	local d = newPlayer(now)
+	d.fedUntil = now
+	addFish(d, "guppy", 1, now)
+	TankService.settle(d, now)
+	local back = later(now, 50)
+	local away = TankService.beginReturn(d, back) -- grace used here
+	check(away.grace == true and #TankService.settle(d, back) == 0, "first time not protected")
+	check(TankService.awaySummary(d, back, away) ~= nil, "no grace message")
+	d.fedUntil = back + Config.real(1 * H) -- fed 1h, then leaves again
+	TankService.settle(d, back)
+	local back2 = back + Config.real(30 * H)
+	local away2 = TankService.beginReturn(d, back2)
+	check(away2.grace == false, "grace given twice")
+	check(#TankService.settle(d, back2) == 1, "starved fish survived the 2nd time")
+end)
+
+test("Auto-Feeder players keep their one-time grace (never needed it)", function(check)
+	local d = newPlayer(now)
+	d.autoFeeder = true
+	addFish(d, "guppy", 1, now)
+	TankService.settle(d, now)
+	TankService.beginReturn(d, later(now, 100))
+	check(not d.offlineGraceUsed, "grace burned while Auto-Feeder was on")
+end)
+
+test("Offline pause is dropped once the fish are fed again", function(check)
+	local d = newPlayer(now)
+	d.fedUntil = now
+	addFish(d, "guppy", 1, now)
+	TankService.settle(d, now)
+	local back = later(now, 50)
+	TankService.beginReturn(d, back)
+	TankService.settle(d, back)
+	d.fedUntil = back + Config.real(1 * H) -- fed for 1h
+	check(#TankService.settle(d, back + Config.real(13.5 * H)) == 1, "old pause still protecting the fish")
+end)
+
+test("Short break: no welcome-back text", function(check)
+	local d = newPlayer(now)
+	addFish(d, "guppy", 0, now)
+	TankService.settle(d, now)
+	local back = now + Config.AWAY_SUMMARY_SECONDS - 1
+	local away = TankService.beginReturn(d, back)
+	TankService.settle(d, back)
+	check(TankService.awaySummary(d, back, away) == nil, "summary after a short break")
+end)
+
+-- First-session fast growth -------------------------------------------------
+test("Starter eggs grow fast until adult; after STARTER_SALES sales eggs are normal", function(check)
+	local d = newPlayer(now)
+	d.coins = 1000
+	TankService.buyEgg(d, "guppy", now)
+	local fish = d.fish[1]
+	check(fish.starter == true, "first egg not a starter")
+	local adultIn = Config.real(Config.ById.guppy.growSeconds / 3600 * H) / Config.STARTER_GROW_MULT
+	TankService.settle(d, now + adultIn + 1)
+	check(fish.age >= 1 and fish.starter == nil, "not adult on the fast timer: " .. fish.age)
+	d.stats.sold = Config.STARTER_SALES
+	TankService.buyEgg(d, "guppy", now)
+	check(d.fish[2].starter == nil, "veteran got a starter egg")
+end)
+
 test("Unknown species in save data is kept, not deleted", function(check)
 	local d = newPlayer(now)
 	addFish(d, "removed_species", 1, now)

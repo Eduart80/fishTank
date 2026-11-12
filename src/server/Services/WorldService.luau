@@ -718,7 +718,7 @@ local function buildStore(parent: Instance)
 	prompt.Parent = counter
 
 	-- show-off display in front of the hut (same models players can buy)
-	for _, display in { { "umbrella", -11, -9 }, { "chair", -11, -8.5 }, { "torch", 10.5, -8 }, { "sandcastle", 12, -11 } } do
+	for _, display in { { "umbrella", -15.5, -9 }, { "chair", -11, -8.5 }, { "torch", 10.5, -8 }, { "sandcastle", 12, -11 } } do
 		local m = PatioModels.build(display[1], onGround(cf * CFrame.new(display[2], 0, display[3])))
 		if m then
 			m.Parent = model

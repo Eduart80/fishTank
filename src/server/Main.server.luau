@@ -270,9 +270,18 @@ local function onPlayerAdded(player: Player)
 		return
 	end
 	local now = os.time()
+	local away = TankService.beginReturn(data, now) -- before settle: offline hunger does not count
 	settleAndNotify(player, data, now)
 	pushState(player, data, now)
 	marketRemote:FireClient(player, MarketService.snapshot(now))
+	local summary = TankService.awaySummary(data, now, away)
+	if summary then
+		task.delay(3, function() -- after the loading screen
+			if player.Parent then
+				notifyRemote:FireClient(player, summary, 9)
+			end
+		end)
+	end
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)

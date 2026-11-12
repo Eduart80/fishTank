@@ -1,6 +1,8 @@
 -- Client UI. Shows what the server sends and asks the server to act. It never decides anything.
 -- v1 is UI-only (no 3D tank yet) so we can test whether the market loop is fun.
 
+print("[FishMarket] client build 2026-11-12 shop-scroll + glass panels") -- proves Studio runs the synced script
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -22,6 +24,11 @@ pcall(function()
 end)
 
 -- Theme ---------------------------------------------------------------------
+-- See-through Market / My Tank windows (0 = solid, 1 = invisible). Window = the big panel,
+-- card = each fish row on it. Cards stay darker than the window so the text stays readable.
+local GLASS_WINDOW = 0.55
+local GLASS_CARD = 0.3
+
 local C = {
 	bg = Color3.fromRGB(14, 28, 44),
 	panel = Color3.fromRGB(22, 42, 64),
@@ -202,6 +209,8 @@ end
 
 local marketFrame, _, marketList = panel(0, 96, "Fish Market")
 local tankFrame, tankTitle, tankList = panel(0.51, 0, "Your Tank")
+marketFrame.BackgroundTransparency = GLASS_WINDOW
+tankFrame.BackgroundTransparency = GLASS_WINDOW
 local shopFrame, _, shopList = panel(0, 96, "Robux Shop")
 local storeFrame, storeTitle, storeList = panel(0, 96, "Harbor Store")
 -- store header: title | Store | My items | R$ Shop tabs, then a hint line, then the list
@@ -241,14 +250,14 @@ local toast = label({
 corner(8).Parent = toast
 
 local toastToken = 0
-local function showToast(text: string)
+local function showToast(text: string, seconds: number?)
 	toastToken += 1
 	local token = toastToken
 	toast.Text = text
 	toast.TextTransparency = 0
 	toast.BackgroundTransparency = 0.15
 	toast.Visible = true
-	task.delay(3.5, function()
+	task.delay(seconds or 3.5, function()
 		if token ~= toastToken then
 			return
 		end
@@ -302,6 +311,8 @@ local function isSmall(): boolean
 	return camera ~= nil and (camera.ViewportSize.X < SMALL_SCREEN_WIDTH or isPhone())
 end
 
+local shopMaxHeight = make("UISizeConstraint", { Parent = shopFrame })
+
 local function layoutPanels()
 	local small = isSmall()
 	local viewport = if workspace.CurrentCamera then workspace.CurrentCamera.ViewportSize else Vector2.new(1280, 800)
@@ -318,18 +329,20 @@ local function layoutPanels()
 		iconColumn.Position = UDim2.new(0, 12, 0.5, 0)
 	end
 	local left = math.floor(12 + 68 * iconColumnScale.Scale + 10) -- windows start right of the icons
+	-- shop is only as tall as its cards, but never taller than the screen (phones): the
+	-- size constraint caps the height, the list inside then scrolls
 	local shopHeight = 64 + #Config.ROBUX * 90
+	shopMaxHeight.MaxSize = Vector2.new(math.huge, shopHeight)
 	if small then
 		for _, frame in allPanels do
 			frame.Position = UDim2.new(0, left, 0, 64)
 			frame.Size = UDim2.new(1, -left - 12, 1, -76)
 		end
-		shopFrame.Size = UDim2.new(1, -left - 12, 0, shopHeight)
 	else
 		marketFrame.Position = UDim2.new(0, left, 0, 64)
 		marketFrame.Size = UDim2.new(0.47, -left, 1, -76)
 		shopFrame.Position = UDim2.new(0, left, 0, 64)
-		shopFrame.Size = UDim2.new(0.47, -left, 0, shopHeight)
+		shopFrame.Size = UDim2.new(0.47, -left, 1, -76)
 		storeFrame.Position = UDim2.new(0, left, 0, 64)
 		storeFrame.Size = UDim2.new(0.47, -left, 1, -76)
 		tankFrame.Position = UDim2.new(0.51, 0, 0, 64)
@@ -404,7 +417,7 @@ local BARS = 30
 local marketRows = {}
 
 for i, species in Config.Species do
-	local row = make("Frame", { BackgroundColor3 = C.row, Size = UDim2.new(1, -6, 0, 74), LayoutOrder = i, Parent = marketList }, { corner(6) })
+	local row = make("Frame", { BackgroundColor3 = C.row, BackgroundTransparency = GLASS_CARD, Size = UDim2.new(1, -6, 0, 74), LayoutOrder = i, Parent = marketList }, { corner(6) })
 	make("Frame", { BackgroundColor3 = species.color, Size = UDim2.new(0, 6, 1, 0), Parent = row }, { corner(3) })
 	label({ Font = FONT_BOLD, Text = species.name, Position = UDim2.new(0, 14, 0, 4), Size = UDim2.new(0.3, 0, 0, 22), Parent = row })
 	local price = label({ Font = FONT_BOLD, Text = "-", Position = UDim2.new(0, 14, 0, 30), Size = UDim2.new(0.18, 0, 0, 24), MaxText = 22, Parent = row })
@@ -486,7 +499,7 @@ local fishRows = {} -- [uid] = row parts
 local function makeFishRow(fish)
 	local species = Config.ById[fish.species]
 	local color = if species then species.color else C.dim
-	local row = make("Frame", { BackgroundColor3 = C.row, Size = UDim2.new(1, -6, 0, 54), Parent = tankList }, { corner(6) })
+	local row = make("Frame", { BackgroundColor3 = C.row, BackgroundTransparency = GLASS_CARD, Size = UDim2.new(1, -6, 0, 54), Parent = tankList }, { corner(6) })
 	make("Frame", { BackgroundColor3 = color, Size = UDim2.new(0, 6, 1, 0), Parent = row }, { corner(3) })
 	local name = label({ Font = FONT_BOLD, Text = if species then species.name else fish.species, Position = UDim2.new(0, 14, 0, 4), Size = UDim2.new(0.32, 0, 0, 20), Parent = row })
 	local barBack = make("Frame", { BackgroundColor3 = C.bg, Position = UDim2.new(0, 14, 0, 30), Size = UDim2.new(0.32, 0, 0, 14), Parent = row }, { corner(4) })
@@ -535,7 +548,7 @@ local function renderTank()
 			local growEnd = math.min(now, tank.fedUntil)
 			if growEnd > tank.now then
 				local boosted = math.max(0, math.min(growEnd, tank.boostUntil or 0) - tank.now)
-				age = math.min(age + ((growEnd - tank.now) + boosted * (Config.GROW_BOOST_MULT - 1)) * Config.TIME_SCALE / species.growSeconds, Config.MAX_AGE)
+				age = math.min(age + ((growEnd - tank.now) + boosted * (Config.GROW_BOOST_MULT - 1)) * Config.TIME_SCALE / species.growSeconds * Config.growMult(fish), Config.MAX_AGE)
 			end
 		end
 
@@ -838,8 +851,8 @@ Remotes:WaitForChild("Market").OnClientEvent:Connect(function(payload)
 	renderTank()
 end)
 
-Remotes:WaitForChild("Notify").OnClientEvent:Connect(function(text)
-	showToast(text)
+Remotes:WaitForChild("Notify").OnClientEvent:Connect(function(text, seconds)
+	showToast(text, seconds)
 end)
 
 require(script.Parent:WaitForChild("FishRenderer")).start()

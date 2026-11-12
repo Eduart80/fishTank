@@ -56,6 +56,20 @@ Config.Species = {
 	{ id = "koi", name = "Koi", eggPrice = 2000, basePrice = 3300, growSeconds = 20 * 3600, starveHours = 48, feedPerHour = 10, liquidity = 8, unlockEarned = 30000, orderSize = 2, maxEventMult = 2, color = Color3.fromRGB(245, 245, 245) },
 }
 
+-- First session: eggs bought before the player has sold STARTER_SALES fish grow STARTER_GROW_MULT
+-- times faster until adult (first Guppy ~2 min instead of 10), so a new player sees the whole
+-- buy -> grow -> sell loop in the first minutes. Players who already sold fish are not affected.
+Config.STARTER_SALES = 6
+Config.STARTER_GROW_MULT = 5
+function Config.growMult(fish): number
+	return if fish.starter and fish.age < 1 then Config.STARTER_GROW_MULT else 1
+end
+
+-- Offline: the FIRST time food runs out while a player is away, that time does not count toward
+-- starving (one-time grace, TankService.beginReturn). After that offline hunger counts.
+-- Back after this many (real) seconds = "Welcome back" summary.
+Config.AWAY_SUMMARY_SECONDS = if RunService:IsStudio() then 60 else 5 * 60
+
 -- If a player has no fish and can't afford the cheapest egg, top them up to this (no permanent soft-lock).
 -- Must stay >= guppy egg price at max demand (10 * EGG_MAX_MULT 2 = 20).
 Config.RESCUE_COINS = 20
@@ -88,7 +102,7 @@ Config.GROW_BOOST_MULT = 2
 Config.ROBUX = {
 	-- once = one per player (hidden as Owned after). Contents are granted by server/ShopService.
 	{ key = "starterPack", kind = "product", id = 3730113426, once = true, name = "Starter Pack", text = "500 coins + Beach Umbrella + a Clownfish egg. One per player!", coins = 500, item = "umbrella", egg = "clownfish" },
-	{ key = "autoFeeder", kind = "pass", id = 2076124464, name = "Auto-Feeder", text = "Your fish never go hungry, even while you are offline." },
+	{ key = "autoFeeder", kind = "pass", id = 2076124464, name = "Auto-Feeder", text = "Your fish never go hungry, even offline: they keep growing and never starve." },
 	{ key = "growBoost", kind = "product", id = 3729887473, name = "Grow Boost (1 hour)", text = "All your fish grow 2x faster for 1 hour. Buy again to add time.", seconds = 3600 },
 }
 

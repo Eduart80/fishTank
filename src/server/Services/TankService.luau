@@ -9,9 +9,16 @@ local MarketService = require(script.Parent.MarketService)
 
 local TankService = {}
 
--- When a fish starts starving: the later of "food ran out" and "it was born".
+-- When a fish starts starving: the later of "food ran out" and "it was born", pushed back by the
+-- hungry time the player spent offline (data.hungerPause, only valid for the fedUntil it was made for:
+-- feeding again sets a new fedUntil and the pause no longer applies).
 local function hungerStart(data, fish): number
-	return math.max(data.fedUntil, fish.born)
+	local start = data.fedUntil
+	local pause = data.hungerPause
+	if pause and pause.fedUntil == data.fedUntil then
+		start += pause.seconds
+	end
+	return math.max(start, fish.born)
 end
 
 local function starveAt(data, fish): number
@@ -39,8 +46,11 @@ function TankService.settle(data, now: number)
 			-- Grow Boost (Robux): the part of this stretch inside the boost counts GROW_BOOST_MULT times
 			local boosted = math.max(0, math.min(growEnd, boostUntil) - fish.lastUpdate)
 			local effective = (growEnd - fish.lastUpdate) + boosted * (Config.GROW_BOOST_MULT - 1)
-			local grown = effective * Config.TIME_SCALE / species.growSeconds
+			local grown = effective * Config.TIME_SCALE / species.growSeconds * Config.growMult(fish)
 			fish.age = math.min(fish.age + grown, Config.MAX_AGE)
+			if fish.starter and fish.age >= 1 then
+				fish.starter = nil -- adult: back to normal speed
+			end
 		end
 		fish.lastUpdate = now
 		if now >= starveAt(data, fish) then
@@ -53,7 +63,84 @@ function TankService.settle(data, now: number)
 	if #died > 0 then
 		data.stats.died += #died
 	end
+	data.lastSeen = now
 	return died
+end
+
+-- Call on join BEFORE settle(). ONE-TIME grace: the first time food runs out while the player is
+-- away, that offline hungry time does not count toward starving (data.offlineGraceUsed). After that,
+-- offline hunger counts like online hunger (feed before leaving, or Auto-Feeder).
+-- Returns what the summary needs (nil = new player / no gap).
+function TankService.beginReturn(data, now: number)
+	local last = data.lastSeen
+	if not last then
+		-- saves from before lastSeen existed: every settle stamped fish.lastUpdate
+		for _, fish in data.fish do
+			last = math.max(last or 0, fish.lastUpdate)
+		end
+	end
+	if not last or now <= last then
+		return nil
+	end
+	local graceUsedNow = false
+	if not data.autoFeeder and not data.offlineGraceUsed then
+		local hungryFrom = math.max(last, data.fedUntil)
+		if now > hungryFrom then
+			data.offlineGraceUsed = true
+			graceUsedNow = true
+			local pause = data.hungerPause
+			if pause and pause.fedUntil == data.fedUntil then
+				pause.seconds += now - hungryFrom
+			else
+				data.hungerPause = { fedUntil = data.fedUntil, seconds = now - hungryFrom }
+			end
+		end
+	end
+	local ages = {}
+	for _, fish in data.fish do
+		ages[fish.uid] = fish.age
+	end
+	return { seconds = now - last, ages = ages, fedUntil = data.fedUntil, grace = graceUsedNow }
+end
+
+local function duration(seconds: number): string
+	if seconds >= 86400 then
+		return ("%dd %dh"):format(seconds // 86400, (seconds % 86400) // 3600)
+	elseif seconds >= 3600 then
+		return ("%dh %dm"):format(seconds // 3600, (seconds % 3600) // 60)
+	end
+	return ("%dm"):format(math.max(1, seconds // 60))
+end
+
+-- Call AFTER settle(). "Welcome back" text, or nil for a short break / empty tank.
+function TankService.awaySummary(data, now: number, away): string?
+	if away and away.grace and #data.fish > 0 then
+		return "Your fish ran out of food while you were away! The harbor kept them alive THIS time. Next time they can starve: feed them before you leave, or get the Auto-Feeder."
+	end
+	if not away or away.seconds < Config.AWAY_SUMMARY_SECONDS or #data.fish == 0 then
+		return nil
+	end
+	local grewUp, adults = 0, 0
+	for _, fish in data.fish do
+		if fish.age >= 1 then
+			adults += 1
+			local before = away.ages[fish.uid]
+			if before and before < 1 then
+				grewUp += 1
+			end
+		end
+	end
+	local parts = { ("Welcome back! You were away %s."):format(duration(away.seconds)) }
+	if grewUp > 0 then
+		table.insert(parts, ("%d fish grew up!"):format(grewUp))
+	end
+	if adults > 0 then
+		table.insert(parts, ("%d ready to sell."):format(adults))
+	end
+	if data.fedUntil < now then
+		table.insert(parts, ("Food ran out %s ago, so they stopped growing. Feed them now, they get hungry while you play!"):format(duration(now - data.fedUntil)))
+	end
+	return table.concat(parts, " ")
 end
 
 function TankService.buyEgg(data, speciesId: string, now: number)
@@ -82,6 +169,7 @@ function TankService.buyEgg(data, speciesId: string, now: number)
 		age = 0,
 		born = now,
 		lastUpdate = now,
+		starter = if data.stats.sold < Config.STARTER_SALES then true else nil,
 	})
 	data.nextUid += 1
 	return true, ("Bought a %s egg for %d"):format(species.name, price)
@@ -95,7 +183,7 @@ function TankService.giveEgg(data, speciesId: string, now: number): boolean
 	if #data.fish == 0 and data.fedUntil < now then
 		data.fedUntil = now + Config.real(Config.EMPTY_TANK_FREE_FEED_HOURS * 3600)
 	end
-	table.insert(data.fish, { uid = data.nextUid, species = speciesId, age = 0, born = now, lastUpdate = now })
+	table.insert(data.fish, { uid = data.nextUid, species = speciesId, age = 0, born = now, lastUpdate = now, starter = if data.stats.sold < Config.STARTER_SALES then true else nil })
 	data.nextUid += 1
 	return true
 end
@@ -260,6 +348,7 @@ function TankService.publicState(data, now: number)
 			uid = fish.uid,
 			species = fish.species,
 			age = fish.age,
+			starter = fish.starter,
 			starveAt = if species then starveAt(data, fish) else nil,
 		})
 	end
