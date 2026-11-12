@@ -158,7 +158,9 @@ local function buildShape(index: number, cf: CFrame, model: Instance, stageIndex
 	})
 
 	local midY = STAND_H + H / 2
-	local glass = { Material = Enum.Material.Glass, Color = COLORS.glass, Transparency = 0.8, CastShadow = false }
+	-- SmoothPlastic, not Glass: Glass is the most expensive material (measured 2026-11-11 stress test:
+	-- hiding the glass took Studio from 42 to 50 FPS and the worst frame from 24 to 44). Looks almost the same.
+	local glass = { Material = Enum.Material.SmoothPlastic, Color = COLORS.glass, Transparency = 0.8, CastShadow = false }
 	local function pane(name, size, offset)
 		local props = table.clone(glass)
 		props.Name = name
@@ -174,7 +176,7 @@ local function buildShape(index: number, cf: CFrame, model: Instance, stageIndex
 		pane(if side > 0 then "GlassRight" else "GlassLeft", Vector3.new(0.4, H, (c - a).Magnitude), CFrame.lookAt((a + c) / 2, c))
 	end
 	trapezoid("Lid", shape, cf, hf + 0.4, hb + 0.4, zF - 0.4, zB + 0.4, STAND_H + H + 0.2, 0.4, {
-		Material = Enum.Material.Glass,
+		Material = Enum.Material.SmoothPlastic,
 		Color = COLORS.glass,
 		Transparency = 0.9,
 		CastShadow = false,
@@ -277,7 +279,7 @@ local function buildTank(index: number, cf: CFrame, parent: Instance)
 	part({ Name = "TankOrigin", Size = Vector3.new(1, 1, 1), CFrame = cf, Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, Parent = model })
 
 	-- front glass faces the plaza centre (local -Z); setStage sizes it
-	local front = part({ Name = "GlassFront", Size = Vector3.new(TANK_W + 0.8, TANK_H, 0.4), CFrame = cf * CFrame.new(0, STAND_H + TANK_H / 2, FRONT_Z - 0.2), Material = Enum.Material.Glass, Color = COLORS.glass, Transparency = 0.8, CastShadow = false, Parent = model })
+	local front = part({ Name = "GlassFront", Size = Vector3.new(TANK_W + 0.8, TANK_H, 0.4), CFrame = cf * CFrame.new(0, STAND_H + TANK_H / 2, FRONT_Z - 0.2), Material = Enum.Material.SmoothPlastic, Color = COLORS.glass, Transparency = 0.8, CastShadow = false, Parent = model })
 
 	-- Food gauge on the bottom of the front glass. Clients fill it in every frame-ish from the
 	-- plot's FedUntil / FishCount attributes (smooth countdown, no server text updates).
