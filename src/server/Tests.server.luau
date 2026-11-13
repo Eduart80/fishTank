@@ -416,7 +416,8 @@ test("Moon phases: one phase per night, all 8 in order, full moon every 8 nights
 	local base = (now // (cycle * 8)) * cycle * 8 -- start of a phase cycle
 	for i, phase in Config.MOON_PHASES do
 		local t = base + (i - 1) * cycle + Config.DAY_NIGHT.daySeconds + 10 -- 10 s into that night
-		check(DayNight.moonPhase(t).key == phase.key, "night " .. i .. " is " .. DayNight.moonPhase(t).key)
+		local got = DayNight.moonPhase(t).key
+		check(got == phase.key or (phase.key == "full" and got == "blood"), "night " .. i .. " is " .. got)
 	end
 	check(DayNight.moonPhase(base + 8 * cycle).key == "new", "cycle does not repeat after 8 nights")
 end)
@@ -456,10 +457,33 @@ test("Weather Radio: next full moon is a full-moon night in the future (or now)"
 	local DayNight = require(ReplicatedStorage.Shared.DayNight)
 	local t = DayNight.nextFullMoon(now)
 	check(t >= now, "full moon in the past")
-	check(DayNight.moonPhase(t).key == "full", "not a full moon: " .. DayNight.moonPhase(t).key)
+	check(DayNight.isMoonNight(DayNight.moonPhase(t)), "not a full/blood moon: " .. DayNight.moonPhase(t).key)
 	local MarketService = require(Services.MarketService)
 	local storm = MarketService.nextEventStart(now, "storm")
 	check(storm == nil or (storm >= now and MarketService.currentEvent(storm + 1).def.id == "storm"), "storm forecast wrong")
+end)
+
+test("Blood Moon: every Nth full moon, Bloodlit beats Moonlit", function(check)
+	local DayNight = require(ReplicatedStorage.Shared.DayNight)
+	local cycle = Config.DAY_NIGHT.daySeconds + Config.DAY_NIGHT.nightSeconds
+	local n = #Config.MOON_PHASES
+	local fullIndex
+	for i, phase in Config.MOON_PHASES do
+		if phase.key == "full" then
+			fullIndex = i - 1
+		end
+	end
+	local bloods = 0
+	for m = 0, Config.BLOOD_MOON.every * 3 - 1 do
+		local t = (m * n + fullIndex) * cycle + Config.DAY_NIGHT.daySeconds + 10
+		if DayNight.moonPhase(t).key == "blood" then
+			bloods += 1
+		end
+	end
+	check(bloods == 3, "blood moons in " .. (Config.BLOOD_MOON.every * 3) .. " full moons: " .. bloods)
+	local d, fish = almostAdult(now)
+	TankService.settle(d, now + 5, { storm = false, night = false, blood = true }, function() return 0 end)
+	check(fish.variant == "blood", "no Bloodlit")
 end)
 
 -- First-session fast growth -------------------------------------------------

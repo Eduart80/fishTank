@@ -116,7 +116,8 @@ Config.SEAGULL_SOUND_ID = "rbxassetid://9118858002"
 -- does not mutate fish that grew up offline.
 Config.VARIANTS = {
 	storm = { name = "Stormborn", icon = "⚡", mult = 2, chance = 0.25, color = Color3.fromRGB(110, 200, 255) },
-	moon = { name = "Moonlit", icon = "🌙", mult = 1.5, chance = 0.3, color = Color3.fromRGB(150, 175, 255) }, -- silver-blue moonlight -- FULL MOON nights only
+	moon = { name = "Moonlit", icon = "🌙", mult = 1.5, chance = 0.3, color = Color3.fromRGB(150, 175, 255) }, -- silver-blue moonlight
+	blood = { name = "Bloodlit", icon = "🩸", mult = 2.5, chance = 0.3, color = Color3.fromRGB(210, 35, 45) }, -- BLOOD MOON nights only -- FULL MOON nights only
 	-- Rare Egg only (Robux), never from weather (no chance field)
 	albino = { name = "Albino", icon = "⚪", mult = 2, color = Color3.fromRGB(255, 215, 228) }, -- pinkish white, like real albino fish
 	golden = { name = "Golden", icon = "✨", mult = 3, color = Color3.fromRGB(255, 200, 60) },
@@ -143,6 +144,8 @@ Config.DAY_NIGHT = { daySeconds = 20 * 60, nightSeconds = 5 * 60 }
 -- Moonlit fish only on FULL MOON nights. Texture ids: upload art/moon_*.png to Roblox (Creator Hub
 -- -> Images/Decals) and paste the ids here. Empty = that phase shows no moon until uploaded.
 -- STUDIO: Workspace attribute "TestMoon" = a phase key (e.g. full) forces that phase.
+-- Blood Moon: every Nth full moon is a red Blood Moon instead (Bloodlit fish, red night tint).
+Config.BLOOD_MOON = { every = 4, phase = { key = "blood", name = "Blood Moon", icon = "🔴", texture = "rbxassetid://1084722537" } }
 Config.MOON_SIZE = 18 -- angular size of the moon (user picked 18 after trying 24, 11, 20)
 Config.MOON_PHASES = {
 	{ key = "new", name = "New Moon", icon = "🌑", texture = "" }, -- no moon, only stars

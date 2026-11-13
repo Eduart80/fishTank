@@ -16,6 +16,7 @@ local Sky = {}
 
 local NIGHT_TINT = Color3.fromRGB(150, 172, 235) -- moonlight blue
 local GOLDEN_TINT = Color3.fromRGB(255, 196, 140) -- sunset / sunrise orange
+local BLOOD_TINT = Color3.fromRGB(235, 120, 120) -- blood moon red
 local WHITE = Color3.new(1, 1, 1)
 
 -- One shooting star: a small glowing streak with a trail, far away high in the sky,
@@ -80,7 +81,10 @@ function Sky.start()
 			tint.Contrast = (if storm then -0.05 else 0.08) * d
 			tint.Saturation = -0.25 * d
 			local w = DayNight.warmth(clock)
-			tint.TintColor = WHITE:Lerp(GOLDEN_TINT, w * 0.8):Lerp(NIGHT_TINT, d)
+			local testMoonNow = workspace:GetAttribute("TestMoon")
+			local tonight = (IS_STUDIO and type(testMoonNow) == "string" and DayNight.phaseByKey(testMoonNow)) or DayNight.moonPhase(workspace:GetServerTimeNow())
+			local nightColor = if tonight.key == "blood" then BLOOD_TINT else NIGHT_TINT
+			tint.TintColor = WHITE:Lerp(GOLDEN_TINT, w * 0.8):Lerp(nightColor, d)
 			-- clear nights: thin the clouds so the moon + stars show (storms keep their thick
 			-- clouds; the server replicates those and we leave them alone)
 			-- (the moon itself is set by the SERVER per phase: AmbienceService.setMoon)

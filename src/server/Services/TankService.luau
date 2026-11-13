@@ -29,7 +29,7 @@ end
 local variantRng = Random.new()
 
 -- Advance every fish to `now`. Fish only grow while fed. Returns (died, mutated).
--- weather = { storm = bool, night = bool } (nil = no mutations). roll = test hook returning 0..1.
+-- weather = { storm = bool, night = bool, blood = bool } (nil = no mutations). roll = test hook returning 0..1.
 function TankService.settle(data, now: number, weather, roll: (() -> number)?)
 	-- Auto-Feeder (Robux pass): food never runs out, also across offline time
 	if data.autoFeeder then
@@ -60,7 +60,7 @@ function TankService.settle(data, now: number, weather, roll: (() -> number)?)
 		end
 		-- grew up just now, while online: the weather may mutate it
 		if weather and ageBefore < 1 and fish.age >= 1 and not fish.variant and step <= Config.VARIANT_MAX_STEP then
-			local kind = if weather.storm then "storm" elseif weather.night then "moon" else nil
+			local kind = if weather.storm then "storm" elseif weather.blood then "blood" elseif weather.night then "moon" else nil
 			local v = kind and Config.VARIANTS[kind]
 			local chance = if v then v.chance + (if data.luckyCharm then Config.LUCKY_CHARM_BONUS else 0) else 0
 			if v and (if roll then roll() else variantRng:NextNumber()) < chance then

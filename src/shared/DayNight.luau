@@ -48,7 +48,18 @@ end
 function DayNight.moonPhase(t: number)
 	local cycle = Config.DAY_NIGHT.daySeconds + Config.DAY_NIGHT.nightSeconds
 	local phases = Config.MOON_PHASES
-	return phases[(t // cycle) % #phases + 1]
+	local k = t // cycle
+	local phase = phases[k % #phases + 1]
+	-- every Nth full moon (counting full moons since time 0) is a Blood Moon
+	if phase.key == "full" and (k // #phases) % Config.BLOOD_MOON.every == 0 then
+		return Config.BLOOD_MOON.phase
+	end
+	return phase
+end
+
+-- full moon OR blood moon (both are "moon nights" for the forecast / announcements)
+function DayNight.isMoonNight(phase): boolean
+	return phase.key == "full" or phase.key == "blood"
 end
 
 -- Weather Radio: start of the next full-moon night (now if it is one right now).
@@ -57,7 +68,7 @@ function DayNight.nextFullMoon(now: number): number
 	local cycle = day + night
 	for k = now // cycle, now // cycle + #Config.MOON_PHASES do
 		local nightStart = k * cycle + day
-		if Config.MOON_PHASES[k % #Config.MOON_PHASES + 1].key == "full" and nightStart + night > now then
+		if Config.MOON_PHASES[k % #Config.MOON_PHASES + 1].key == "full" and nightStart + night > now then -- blood moons count too
 			return math.max(now, nightStart)
 		end
 	end
@@ -65,6 +76,9 @@ function DayNight.nextFullMoon(now: number): number
 end
 
 function DayNight.phaseByKey(key: string)
+	if key == "blood" then
+		return Config.BLOOD_MOON.phase
+	end
 	for _, phase in Config.MOON_PHASES do
 		if phase.key == key then
 			return phase

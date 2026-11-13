@@ -1,5 +1,5 @@
 -- Server entry point: remotes, player lifecycle, the 5-second game tick.
-print("[FishMarket] SERVER build 2026-11-13h server moon") -- proves Studio runs the synced script
+print("[FishMarket] SERVER build 2026-11-13j blood moon") -- proves Studio runs the synced script
 -- Rule: the client only ASKS. Every coin, fish and price is decided here.
 
 local Players = game:GetService("Players")
@@ -135,8 +135,15 @@ local function currentWeather(now: number)
 	local testMoon = workspace:GetAttribute("TestMoon")
 	local phase = (IS_STUDIO and type(testMoon) == "string" and DayNight.phaseByKey(testMoon)) or DayNight.moonPhase(now)
 	local dark = DayNight.darkness(clock)
-	-- night = Moonlit can happen: deep night under a FULL moon only
-	return { storm = storm, night = dark >= 0.8 and phase.key == "full", fullMoonRising = dark >= 0.5 and phase.key == "full", phase = phase }
+	-- night = Moonlit can happen (deep night under a FULL moon); blood = Bloodlit (BLOOD moon)
+	local deep = dark >= 0.8
+	return {
+		storm = storm,
+		night = deep and phase.key == "full",
+		blood = deep and phase.key == "blood",
+		fullMoonRising = dark >= 0.5 and DayNight.isMoonNight(phase),
+		phase = phase,
+	}
 end
 
 local function settleAndNotify(player: Player, data, now: number)
@@ -548,7 +555,11 @@ local function updateWeather(now: number)
 	if weather.fullMoonRising ~= fullMoonOn then
 		fullMoonOn = weather.fullMoonRising
 		if fullMoonOn then
-			notifyRemote:FireAllClients("🌕 Full Moon tonight! Fish that grow up under it can turn Moonlit (1.5x)!", 7)
+			if weather.phase.key == "blood" then
+				notifyRemote:FireAllClients("🔴 BLOOD MOON tonight! Fish that grow up under it can turn Bloodlit (2.5x)!", 8)
+			else
+				notifyRemote:FireAllClients("🌕 Full Moon tonight! Fish that grow up under it can turn Moonlit (1.5x)!", 7)
+			end
 		end
 	end
 	local storm = weather.storm

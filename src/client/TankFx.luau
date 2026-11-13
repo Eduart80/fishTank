@@ -123,8 +123,8 @@ local function lightning(top: Vector3)
 	thunder()
 end
 
-local function moonbeam(top: Vector3)
-	local color = Color3.fromRGB(215, 222, 255)
+local function moonbeam(top: Vector3, tint: Color3?)
+	local color = tint or Color3.fromRGB(215, 222, 255)
 	local height = 60
 	-- a soft vertical beam (cylinder lying along Y) that fades in and out
 	local beam = neon(Vector3.new(height, 8, 8), CFrame.new(top + Vector3.new(0, height / 2 - 4, 0)) * CFrame.Angles(0, 0, math.pi / 2), color, 1)
@@ -146,6 +146,8 @@ function TankFx.start()
 			lightning(top)
 		elseif kind == "moon" then
 			moonbeam(top)
+		elseif kind == "blood" then
+			moonbeam(top, Color3.fromRGB(230, 50, 60))
 		elseif kind == "rare" then
 			sparkles(top, Color3.fromRGB(255, 205, 70), 60, 3)
 		end

@@ -119,6 +119,7 @@ function DevPanel.start()
 		{ text = "Full", attr = "TestMoon", value = "full" },
 		{ text = "Half", attr = "TestMoon", value = "half_waxing" },
 		{ text = "New", attr = "TestMoon", value = "new" },
+		{ text = "Blood", attr = "TestMoon", value = "blood" },
 	})
 	row("Effect", {
 		{ text = "⚡", attr = "TestFx", value = "storm" },
