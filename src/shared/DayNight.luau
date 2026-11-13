@@ -15,16 +15,32 @@ function DayNight.clockAt(t: number): number
 	return (18 + 12 * (x - day) / night) % 24
 end
 
--- 0 = full day, 1 = deep night. Dusk 17.5 -> 19, dawn 5 -> 6.5.
+-- 0 = full day, 1 = deep night. Starts only AFTER sunset (18:00 -> 19:15) and ends at sunrise
+-- (4:45 -> 6:00): before, the blue night tint came on while the sun was still up.
 function DayNight.darkness(clock: number): number
-	if clock >= 6.5 and clock <= 17.5 then
+	if clock >= 6 and clock <= 18 then
 		return 0
-	elseif clock > 17.5 and clock < 19 then
-		return (clock - 17.5) / 1.5
-	elseif clock > 5 and clock < 6.5 then
-		return (6.5 - clock) / 1.5
+	elseif clock > 18 and clock < 19.25 then
+		return (clock - 18) / 1.25
+	elseif clock > 4.75 and clock < 6 then
+		return (6 - clock) / 1.25
 	end
 	return 1
+end
+
+-- 0..1 golden-hour warmth: rises towards sunset (16:30 -> 18:00), fades at dusk (-> 19:00);
+-- same around sunrise (5:00 -> 6:00 -> 7:30).
+function DayNight.warmth(clock: number): number
+	if clock >= 16.5 and clock <= 18 then
+		return (clock - 16.5) / 1.5
+	elseif clock > 18 and clock < 19 then
+		return 1 - (clock - 18)
+	elseif clock >= 6 and clock < 7.5 then
+		return 1 - (clock - 6) / 1.5
+	elseif clock > 5 and clock < 6 then
+		return clock - 5
+	end
+	return 0
 end
 
 -- Moon phase of the night that belongs to time t (the night at the end of each day/night cycle).

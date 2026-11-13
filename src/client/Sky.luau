@@ -14,6 +14,7 @@ local IS_STUDIO = RunService:IsStudio()
 local Sky = {}
 
 local NIGHT_TINT = Color3.fromRGB(150, 172, 235) -- moonlight blue
+local GOLDEN_TINT = Color3.fromRGB(255, 196, 140) -- sunset / sunrise orange
 local WHITE = Color3.new(1, 1, 1)
 
 function Sky.start()
@@ -35,7 +36,8 @@ function Sky.start()
 			tint.Brightness = (if storm then 0.06 else -0.13) * d -- clear night -0.13 (user: sand was too bright at -0.06)
 			tint.Contrast = (if storm then -0.05 else 0.08) * d
 			tint.Saturation = -0.25 * d
-			tint.TintColor = WHITE:Lerp(NIGHT_TINT, d)
+			local w = DayNight.warmth(clock)
+			tint.TintColor = WHITE:Lerp(GOLDEN_TINT, w * 0.8):Lerp(NIGHT_TINT, d)
 			-- clear nights: thin the clouds so the moon + stars show (storms keep their thick
 			-- clouds; the server replicates those and we leave them alone)
 			-- moon phase of tonight (8-night cycle). A phase without an uploaded texture (or the new
