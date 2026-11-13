@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 local SoundService = game:GetService("SoundService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
+local TankFx = require(script.Parent:WaitForChild("TankFx"))
 
 local Weather = {}
 
@@ -96,6 +97,15 @@ function Weather.start()
 	apply()
 
 	local function strike()
+		-- a real bolt in the sky: mostly far out toward the horizon (thick, so it shows through the
+		-- storm haze), sometimes close to the island for a jump scare
+		local camPos = camera.CFrame.Position
+		local angle = math.random() * math.pi * 2
+		local close = math.random() < 0.3
+		local dist = if close then 70 + math.random() * 60 else 180 + math.random() * 170
+		local ground = Vector3.new(camPos.X + math.cos(angle) * dist, -1.5, camPos.Z + math.sin(angle) * dist)
+		local sky = ground + Vector3.new(math.random(-30, 30), if close then 170 else 240, math.random(-30, 30))
+		TankFx.bolt(sky, ground, if close then 1.6 else 3.2, if close then 80 else 140)
 		-- double flash, then thunder a moment later (sound is slower than light)
 		local info = TweenInfo.new(0.25)
 		flash.Brightness = 0.45

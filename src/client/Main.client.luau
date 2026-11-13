@@ -1,7 +1,7 @@
 -- Client UI. Shows what the server sends and asks the server to act. It never decides anything.
 -- v1 is UI-only (no 3D tank yet) so we can test whether the market loop is fun.
 
-print("[FishMarket] client build 2026-11-12d weather + night") -- proves Studio runs the synced script
+print("[FishMarket] client build 2026-11-13c sky lightning") -- proves Studio runs the synced script
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -556,6 +556,7 @@ local function renderTank()
 
 
 	tankTitle.Text = ("%s %d/%d"):format(Config.TANK_STAGES[Config.tankStage(tank.slots)].name, #tank.fish, tank.slots)
+		.. (if (tank.incubator or 0) > 0 then (" · 🥚%d waiting"):format(tank.incubator) else "")
 	slotButton.Text = if tank.slots >= tank.maxSlots then "Max Slots" else ("+1 Slot: %s"):format(fmt(tank.slotCost))
 	local stage = Config.tankStage(tank.slots)
 	local nextStage = Config.TANK_STAGES[stage + 1]
@@ -572,6 +573,11 @@ local function renderTank()
 	for order, fish in tank.fish do
 		seen[fish.uid] = true
 		local row = fishRows[fish.uid] or makeFishRow(fish)
+		-- weather variant: "⚡ Stormborn Salmon" in the variant colour
+		local variant = fish.variant and Config.VARIANTS[fish.variant]
+		local speciesName = if Config.ById[fish.species] then Config.ById[fish.species].name else fish.species
+		row.name.Text = if variant then ("%s %s %s"):format(variant.icon, variant.name, speciesName) else speciesName
+		row.name.TextColor3 = if variant then variant.color else C.text
 		fishRows[fish.uid] = row
 		row.frame.LayoutOrder = order
 
@@ -894,6 +900,7 @@ require(script.Parent:WaitForChild("Seagulls")).start()
 require(script.Parent:WaitForChild("FerryCard")).start()
 require(script.Parent:WaitForChild("Weather")).start()
 require(script.Parent:WaitForChild("Sky")).start()
+require(script.Parent:WaitForChild("TankFx")).start()
 require(script.Parent:WaitForChild("BoatRenderer")).start()
 require(script.Parent:WaitForChild("Bubbles")).start()
 

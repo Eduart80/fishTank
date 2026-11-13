@@ -103,6 +103,12 @@ joined → bought first egg → first fish grew → first sale → first unlock 
 
 Benchmarks are rough; Creator Dashboard shows real D1/D7 + session length once live.
 
+## Decisions 2026-11-13 (rare eggs, sizes, Kraken)
+- **Rare egg = a species the player already has, in a rare variant** (e.g. Golden Clownfish, Albino Salmon), built on the weather-variant system (Config.VARIANTS). Never a creature from a later world. Always fits the tank.
+- **No automatic tank growth.** Every creature has a minimum tank stage. Shop eggs: blocked until the tank is big enough ("Needs Large Tank"). Eggs won by chance (daily, drops, fishing): wait in an **Egg Incubator** in the inventory until the tank is big enough. Slots stay the coin sink.
+- **Next world:** the Harbor tank stays as built; the new world gets its own second tank (its start size: decide later).
+- **Kraken:** realistic mesh model, decide artist / Toolbox / Blender later (only hero creatures get detailed models; small fish stay simple for phone performance).
+
 ## Round 2 plan — Coral Reef (draft 2026-11-12, NOT built)
 
 Problem: Koi takes 20 h, so top players turn into "check once a day" players and drift away.

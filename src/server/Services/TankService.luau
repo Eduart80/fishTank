@@ -26,8 +26,11 @@ local function starveAt(data, fish): number
 	return hungerStart(data, fish) + Config.real(species.starveHours * 3600)
 end
 
--- Advance every fish to `now`. Fish only grow while fed. Returns the list of fish that died.
-function TankService.settle(data, now: number)
+local variantRng = Random.new()
+
+-- Advance every fish to `now`. Fish only grow while fed. Returns (died, mutated).
+-- weather = { storm = bool, night = bool } (nil = no mutations). roll = test hook returning 0..1.
+function TankService.settle(data, now: number, weather, roll: (() -> number)?)
 	-- Auto-Feeder (Robux pass): food never runs out, also across offline time
 	if data.autoFeeder then
 		data.fedUntil = math.max(data.fedUntil, now + Config.real(Config.MAX_FEED_HOURS * 3600))
@@ -35,6 +38,7 @@ function TankService.settle(data, now: number)
 	local boostUntil = data.boostUntil or 0
 	local died = {}
 	local alive = {}
+	local mutated = {}
 	for _, fish in data.fish do
 		local species = Config.ById[fish.species]
 		if not species then
@@ -42,6 +46,8 @@ function TankService.settle(data, now: number)
 			continue
 		end
 		local growEnd = math.min(now, data.fedUntil)
+		local ageBefore = fish.age
+		local step = now - fish.lastUpdate
 		if growEnd > fish.lastUpdate then
 			-- Grow Boost (Robux): the part of this stretch inside the boost counts GROW_BOOST_MULT times
 			local boosted = math.max(0, math.min(growEnd, boostUntil) - fish.lastUpdate)
@@ -50,6 +56,15 @@ function TankService.settle(data, now: number)
 			fish.age = math.min(fish.age + grown, Config.MAX_AGE)
 			if fish.starter and fish.age >= 1 then
 				fish.starter = nil -- adult: back to normal speed
+			end
+		end
+		-- grew up just now, while online: the weather may mutate it
+		if weather and ageBefore < 1 and fish.age >= 1 and not fish.variant and step <= Config.VARIANT_MAX_STEP then
+			local kind = if weather.storm then "storm" elseif weather.night then "moon" else nil
+			local v = kind and Config.VARIANTS[kind]
+			if v and (if roll then roll() else variantRng:NextNumber()) < v.chance then
+				fish.variant = kind
+				table.insert(mutated, fish)
 			end
 		end
 		fish.lastUpdate = now
@@ -64,7 +79,7 @@ function TankService.settle(data, now: number)
 		data.stats.died += #died
 	end
 	data.lastSeen = now
-	return died
+	return died, mutated
 end
 
 -- Call on join BEFORE settle(). ONE-TIME grace: the first time food runs out while the player is
@@ -176,16 +191,54 @@ function TankService.buyEgg(data, speciesId: string, now: number)
 end
 
 -- A free egg (Starter Pack). No price, no unlock check, no market egg demand. false = tank full.
-function TankService.giveEgg(data, speciesId: string, now: number): boolean
+function TankService.giveEgg(data, speciesId: string, now: number, variant: string?): boolean
 	if not Config.ById[speciesId] or #data.fish >= data.slots then
 		return false
 	end
 	if #data.fish == 0 and data.fedUntil < now then
 		data.fedUntil = now + Config.real(Config.EMPTY_TANK_FREE_FEED_HOURS * 3600)
 	end
-	table.insert(data.fish, { uid = data.nextUid, species = speciesId, age = 0, born = now, lastUpdate = now, starter = if data.stats.sold < Config.STARTER_SALES then true else nil })
+	table.insert(data.fish, { uid = data.nextUid, species = speciesId, age = 0, born = now, lastUpdate = now, starter = if data.stats.sold < Config.STARTER_SALES then true else nil, variant = variant })
 	data.nextUid += 1
 	return true
+end
+
+-- Rare Egg: a random species the player has unlocked + a rare variant by Config.RARE_EGG_ODDS.
+function TankService.rollRareEgg(data, rng: Random?): (string, string)
+	local r = rng or Random.new()
+	local unlocked = {}
+	for _, species in Config.Species do
+		if data.stats.earned >= (species.unlockEarned or 0) then
+			table.insert(unlocked, species.id)
+		end
+	end
+	local speciesId = unlocked[r:NextInteger(1, #unlocked)]
+	local total = 0
+	for _, odd in Config.RARE_EGG_ODDS do
+		total += odd.weight
+	end
+	local pick = r:NextNumber() * total
+	for _, odd in Config.RARE_EGG_ODDS do
+		pick -= odd.weight
+		if pick <= 0 then
+			return speciesId, odd.variant
+		end
+	end
+	return speciesId, Config.RARE_EGG_ODDS[1].variant
+end
+
+-- Egg Incubator: eggs that did not fit (full tank) wait here and hatch into the tank as soon as
+-- a slot is free. Never capped: they can be paid for with Robux. Returns the fish placed now.
+function TankService.hatchIncubator(data, now: number)
+	local placed = {}
+	local incubator = data.incubator
+	while incubator and #incubator > 0 and #data.fish < data.slots do
+		local egg = table.remove(incubator, 1)
+		if TankService.giveEgg(data, egg.species, now, egg.variant) then
+			table.insert(placed, data.fish[#data.fish])
+		end
+	end
+	return placed
 end
 
 -- Coins per (game) hour of food for the current tank
@@ -241,8 +294,12 @@ function TankService.sell(data, uids: { number }?, now: number)
 	for _, fish in data.fish do
 		local sellable = fish.age >= 1 and Config.ById[fish.species] ~= nil and (wanted == nil or wanted[fish.uid])
 		if sellable then
-			bySpecies[fish.species] = bySpecies[fish.species] or {}
-			table.insert(bySpecies[fish.species], Config.sizeFromAge(fish.age))
+			bySpecies[fish.species] = bySpecies[fish.species] or { sizes = {}, plain = 0, weighted = 0 }
+			local group = bySpecies[fish.species]
+			local size = Config.sizeFromAge(fish.age)
+			table.insert(group.sizes, size)
+			group.plain += size
+			group.weighted += size * Config.variantMult(fish)
 			count += 1
 		else
 			table.insert(keep, fish)
@@ -253,8 +310,9 @@ function TankService.sell(data, uids: { number }?, now: number)
 	end
 
 	local gross = 0
-	for speciesId, sizes in bySpecies do
-		gross += MarketService.sell(speciesId, sizes, now)
+	for speciesId, group in bySpecies do
+		-- market sees normal fish (normal pressure); variants earn their multiplier on top
+		gross += MarketService.sell(speciesId, group.sizes, now) * group.weighted / group.plain
 	end
 	local net = math.floor(gross * (1 - Config.MARKET_FEE))
 	data.fish = keep
@@ -283,7 +341,7 @@ function TankService.sellToBuyer(data, speciesId: string, maxCount: number, pric
 	local sold, coins = {}, 0
 	for i = 1, count do
 		sold[adults[i]] = true
-		coins += math.floor(pricePerUnit * Config.sizeFromAge(adults[i].age) + 0.5)
+		coins += math.floor(pricePerUnit * Config.sizeFromAge(adults[i].age) * Config.variantMult(adults[i]) + 0.5)
 	end
 	local keep = {}
 	for _, fish in data.fish do
@@ -349,6 +407,7 @@ function TankService.publicState(data, now: number)
 			species = fish.species,
 			age = fish.age,
 			starter = fish.starter,
+			variant = fish.variant,
 			starveAt = if species then starveAt(data, fish) else nil,
 		})
 	end
@@ -365,6 +424,7 @@ function TankService.publicState(data, now: number)
 		stats = data.stats,
 		autoFeeder = data.autoFeeder == true,
 		boostUntil = data.boostUntil or 0,
+		incubator = if data.incubator then #data.incubator else 0,
 		starterPack = data.starterPack == true,
 	}
 end

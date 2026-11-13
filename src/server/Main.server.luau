@@ -1,10 +1,13 @@
 -- Server entry point: remotes, player lifecycle, the 5-second game tick.
+print("[FishMarket] SERVER build 2026-11-13c TestFx") -- proves Studio runs the synced script
 -- Rule: the client only ASKS. Every coin, fish and price is decided here.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
+local DayNight = require(ReplicatedStorage.Shared.DayNight)
+local IS_STUDIO = game:GetService("RunService"):IsStudio()
 local Services = script.Parent:WaitForChild("Services")
 local DataService = require(Services.DataService)
 local MarketService = require(Services.MarketService)
@@ -37,6 +40,9 @@ marketRemote.Parent = remotes
 local notifyRemote = Instance.new("RemoteEvent")
 notifyRemote.Name = "Notify"
 notifyRemote.Parent = remotes
+local fxRemote = Instance.new("RemoteEvent") -- big visual moments everyone sees (lightning on a tank...)
+fxRemote.Name = "Fx"
+fxRemote.Parent = remotes
 local ferryRemote = Instance.new("RemoteEvent")
 ferryRemote.Name = "Ferry"
 ferryRemote.Parent = remotes
@@ -104,8 +110,35 @@ if game:GetService("RunService"):IsStudio() then
 	end)
 end
 
+-- Weather right now, for mutations + the storm look. Same on every server (event hash + clock).
+-- STUDIO: Workspace attributes TestStorm / TestClock override it.
+local function currentWeather(now: number)
+	local event = MarketService.currentEvent(now)
+	local storm = (event ~= nil and event.def.id == "storm") or (IS_STUDIO and workspace:GetAttribute("TestStorm") == true)
+	local test = workspace:GetAttribute("TestClock")
+	local clock = if IS_STUDIO and type(test) == "number" and test > 0 then test % 24 else DayNight.clockAt(now)
+	return { storm = storm, night = DayNight.darkness(clock) >= 0.8 }
+end
+
 local function settleAndNotify(player: Player, data, now: number)
-	local died = TankService.settle(data, now)
+	-- STUDIO: Workspace attribute TestMutate = true makes every mutation roll succeed
+	local forceRoll = if IS_STUDIO and workspace:GetAttribute("TestMutate") == true then function() return 0 end else nil
+	local died, mutated = TankService.settle(data, now, currentWeather(now), forceRoll)
+	for _, fish in TankService.hatchIncubator(data, now) do
+		local v = Config.VARIANTS[fish.variant]
+		local species = Config.ById[fish.species]
+		notifyRemote:FireClient(player, ("A slot is free: your %s%s egg moved from the Incubator into the tank!"):format(if v then v.icon .. " " .. v.name .. " " else "", species.name), 6)
+	end
+	for _, fish in mutated do
+		local v = Config.VARIANTS[fish.variant]
+		local species = Config.ById[fish.species]
+		notifyRemote:FireClient(player, ("%s Your %s grew up %s! It sells for %sx."):format(v.icon, species.name, v.name, tostring(v.mult)), 6)
+		local top = WorldService.tankTop(player)
+		if top then
+			fxRemote:FireAllClients(fish.variant, top) -- "storm" = lightning strike, "moon" = moonbeam
+		end
+		AnalyticsTracker.custom(player, "Variant_" .. v.name, 1)
+	end
 	if #died > 0 then
 		local names = {}
 		for _, fish in died do
@@ -248,10 +281,14 @@ end
 
 -- Robux shop --------------------------------------------------------------
 ShopService.start({
-	onChanged = function(player, msg)
+	onChanged = function(player, msg, fx)
 		local data = DataService.get(player)
 		if data then
 			pushState(player, data, os.time())
+		end
+		local top = fx and WorldService.tankTop(player)
+		if top then
+			fxRemote:FireAllClients(fx, top)
 		end
 		if msg then
 			notifyRemote:FireClient(player, msg)
@@ -371,15 +408,25 @@ end)
 -- gulls fly off. Same schedule on every server (it comes from the event hash).
 -- STUDIO ONLY: Workspace attribute "TestStorm" (tick it in Properties while playing, Server side)
 -- forces the storm on/off without waiting for the event.
-local IS_STUDIO = game:GetService("RunService"):IsStudio()
 if IS_STUDIO then
 	workspace:SetAttribute("TestStorm", false)
+	workspace:SetAttribute("TestMutate", false) -- true = every weather mutation roll succeeds
+	-- TestFx: type storm / moon / rare -> that effect plays on the first player's tank right away
+	workspace:SetAttribute("TestFx", "")
+	workspace:GetAttributeChangedSignal("TestFx"):Connect(function()
+		local kind = workspace:GetAttribute("TestFx")
+		local player = Players:GetPlayers()[1]
+		local top = player and WorldService.tankTop(player)
+		if kind ~= "" and top then
+			print("[TestFx]", kind, "at", top)
+			fxRemote:FireAllClients(kind, top)
+		end
+	end)
 	workspace:SetAttribute("TestClock", 0) -- 0 = normal day/night cycle; e.g. 22 = night (client/Sky)
 end
 local stormOn = false
 local function updateWeather(now: number)
-	local event = MarketService.currentEvent(now)
-	local storm = (event ~= nil and event.def.id == "storm") or (IS_STUDIO and workspace:GetAttribute("TestStorm") == true)
+	local storm = currentWeather(now).storm
 	if storm == stormOn then
 		return
 	end

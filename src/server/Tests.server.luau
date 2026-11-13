@@ -333,6 +333,69 @@ test("Analytics milestones: species unlocks, tank stages, earned", function(chec
 	check(set.Unlocked_Koi and set.Unlocked_Clownfish and set.Tank_SeaPen and set.Tank_MediumTank and set.Earned_10000 and not set.Earned_100000, "missing/extra milestones")
 end)
 
+-- Weather mutations -------------------------------------------------------
+local function almostAdult(now)
+	local d = newPlayer(now)
+	local fish = addFish(d, "guppy", 0.999, now)
+	return d, fish
+end
+
+test("Mutation: storm + lucky roll when growing up online = Stormborn", function(check)
+	local d, fish = almostAdult(now)
+	local _, mutated = TankService.settle(d, now + 5, { storm = true, night = true }, function() return 0 end)
+	check(fish.age >= 1 and fish.variant == "storm" and #mutated == 1, "no storm variant (storm must beat night)")
+end)
+
+test("Mutation: night roll = Moonlit; unlucky roll or clear weather = nothing", function(check)
+	local d, fish = almostAdult(now)
+	TankService.settle(d, now + 5, { storm = false, night = true }, function() return 0 end)
+	check(fish.variant == "moon", "no moon variant")
+	local d2, fish2 = almostAdult(now)
+	TankService.settle(d2, now + 5, { storm = true, night = false }, function() return 0.99 end)
+	check(fish2.variant == nil, "unlucky roll mutated")
+	local d3, fish3 = almostAdult(now)
+	TankService.settle(d3, now + 5, { storm = false, night = false }, function() return 0 end)
+	check(fish3.variant == nil, "clear weather mutated")
+end)
+
+test("Mutation: fish that grew up OFFLINE (long step) never roll", function(check)
+	local d, fish = almostAdult(now)
+	TankService.settle(d, now + Config.VARIANT_MAX_STEP + 60, { storm = true, night = true }, function() return 0 end)
+	check(fish.age >= 1 and fish.variant == nil, "offline catch-up mutated")
+end)
+
+test("Mutation: boats pay the variant multiplier", function(check)
+	local d = newPlayer(now)
+	addFish(d, "guppy", 1, now)
+	local storm = addFish(d, "guppy", 1, now)
+	storm.variant = "storm"
+	local _, coins = TankService.sellToBuyer(d, "guppy", 2, 100)
+	check(coins == 100 + 100 * Config.VARIANTS.storm.mult, "boat coins " .. coins)
+end)
+
+-- Rare Egg + Egg Incubator ---------------------------------------------------
+test("Rare Egg: only unlocked species, always a rare variant", function(check)
+	local d = newPlayer(now) -- earned 0: only Guppy unlocked
+	local rng = Random.new(7)
+	for _ = 1, 50 do
+		local speciesId, variant = TankService.rollRareEgg(d, rng)
+		check(speciesId == "guppy", "locked species rolled: " .. speciesId)
+		check(variant == "albino" or variant == "golden", "bad variant " .. tostring(variant))
+	end
+end)
+
+test("Incubator: waits while the tank is full, hatches when a slot frees", function(check)
+	local d = newPlayer(now)
+	for _ = 1, d.slots do
+		addFish(d, "guppy", 1, now)
+	end
+	d.incubator = { { species = "guppy", variant = "golden" } }
+	check(#TankService.hatchIncubator(d, now) == 0 and #d.incubator == 1, "hatched into a full tank")
+	table.remove(d.fish)
+	local placed = TankService.hatchIncubator(d, now)
+	check(#placed == 1 and placed[1].variant == "golden" and #d.incubator == 0, "did not hatch into the free slot")
+end)
+
 -- First-session fast growth -------------------------------------------------
 test("Starter eggs grow fast until adult; after STARTER_SALES sales eggs are normal", function(check)
 	local d = newPlayer(now)

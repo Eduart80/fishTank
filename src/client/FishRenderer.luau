@@ -89,6 +89,14 @@ local function margin(fish): number
 	return BODY.Z * fish.scale * 0.6 + 0.4
 end
 
+-- Weather variant look: body in the variant colour, Neon so it glows (best at night)
+local function applyVariant(fish, variantId)
+	fish.variant = variantId
+	local v = variantId and Config.VARIANTS[variantId]
+	fish.body.Color = if v then v.color else fish.species.color
+	fish.body.Material = if v then Enum.Material.Neon else Enum.Material.SmoothPlastic
+end
+
 local function createFish(tank, entry)
 	local species = Config.ById[entry.s]
 	if not species then
@@ -106,6 +114,9 @@ local function createFish(tank, entry)
 		dir = Vector3.new(rng:NextNumber(-1, 1), 0, rng:NextNumber(-1, 1)).Unit,
 	}
 	applySize(fish)
+	if entry.v then
+		applyVariant(fish, entry.v)
+	end
 	fish.pos = randomPoint(tank, margin(fish))
 	fish.target = randomPoint(tank, margin(fish))
 	return fish
@@ -135,6 +146,9 @@ local function syncTank(tank, json: string)
 				applySize(fish)
 			end
 			fish.hungry = entry.h
+			if fish.variant ~= entry.v then
+				applyVariant(fish, entry.v)
+			end
 		else
 			tank.fish[entry.u] = createFish(tank, entry)
 		end

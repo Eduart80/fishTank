@@ -935,6 +935,15 @@ function WorldService.onFeed(callback)
 end
 
 -- Publishes the visible fish list for this player's tank (only if it changed).
+-- Where effects (lightning, moonbeam) should hit this player's tank: top centre of the tank. Nil if none.
+function WorldService.tankTop(player: Player): Vector3?
+	local plot = plotOf[player]
+	if not plot then
+		return nil
+	end
+	return (plot.cf * CFrame.new(0, STAND_H + 12, 0)).Position
+end
+
 function WorldService.updateFish(player: Player, data, now: number)
 	local plot = plotOf[player]
 	if not plot or plot.stress then
@@ -943,7 +952,7 @@ function WorldService.updateFish(player: Player, data, now: number)
 	local hungry = now >= data.fedUntil
 	local list = {}
 	for _, fish in data.fish do
-		table.insert(list, { u = fish.uid, s = fish.species, a = math.floor(fish.age * 100) / 100, h = hungry })
+		table.insert(list, { u = fish.uid, s = fish.species, a = math.floor(fish.age * 100) / 100, h = hungry, v = fish.variant })
 	end
 	local json = HttpService:JSONEncode(list)
 	if json ~= plot.lastJson then

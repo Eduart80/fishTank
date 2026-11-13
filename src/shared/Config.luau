@@ -104,6 +104,29 @@ Config.RESCUE_COINS = 20
 -- Empty = silent gulls.
 Config.SEAGULL_SOUND_ID = "rbxassetid://9118858002"
 
+-- Weather mutations: when a fish grows up (age crosses 1) WHILE the owner is online, the weather at
+-- that moment can turn it into a variant that sells for mult x. Storm wins over night.
+-- Variant fish put normal pressure on the market; the bonus is paid on top.
+-- VARIANT_MAX_STEP: only short (online) growth steps can roll, so logging in during a storm
+-- does not mutate fish that grew up offline.
+Config.VARIANTS = {
+	storm = { name = "Stormborn", icon = "⚡", mult = 2, chance = 0.25, color = Color3.fromRGB(110, 200, 255) },
+	moon = { name = "Moonlit", icon = "🌙", mult = 1.5, chance = 0.15, color = Color3.fromRGB(215, 222, 255) },
+	-- Rare Egg only (Robux), never from weather (no chance field)
+	albino = { name = "Albino", icon = "⚪", mult = 2, color = Color3.fromRGB(250, 250, 255) },
+	golden = { name = "Golden", icon = "✨", mult = 3, color = Color3.fromRGB(255, 200, 60) },
+}
+-- Rare Egg (Robux developer product): a species the player has unlocked, always a rare variant.
+Config.RARE_EGG_ODDS = {
+	{ variant = "albino", weight = 75 },
+	{ variant = "golden", weight = 25 },
+}
+Config.VARIANT_MAX_STEP = 30
+function Config.variantMult(fish): number
+	local v = fish.variant and Config.VARIANTS[fish.variant]
+	return if v then v.mult else 1
+end
+
 -- Day / night (shared/DayNight + client/Sky). Real seconds; same sky on every server.
 -- Day = sunrise (06:00) to sunset (18:00), night = 18:00 to 06:00 (shorter, so phones are not dark long).
 -- STUDIO: Workspace attribute "TestClock" (0-24, e.g. 22 = night; 0 = normal cycle).
@@ -139,6 +162,7 @@ Config.ROBUX = {
 	-- once = one per player (hidden as Owned after). Contents are granted by server/ShopService.
 	{ key = "starterPack", kind = "product", id = 3730113426, once = true, name = "Starter Pack", text = "500 coins + Beach Umbrella + a Clownfish egg. One per player!", coins = 500, item = "umbrella", egg = "clownfish" },
 	{ key = "autoFeeder", kind = "pass", id = 2076124464, name = "Auto-Feeder", text = "Your fish never go hungry, even offline: they keep growing and never starve." },
+	{ key = "rareEgg", kind = "product", id = 3730899968, name = "Rare Egg", text = "A mystery egg of a fish you have unlocked. Always hatches Albino (2x) or Golden (3x)!" },
 	{ key = "growBoost", kind = "product", id = 3729887473, name = "Grow Boost (1 hour)", text = "All your fish grow 2x faster for 1 hour. Buy again to add time.", seconds = 3600 },
 }
 

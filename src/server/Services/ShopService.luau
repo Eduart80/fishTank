@@ -35,7 +35,7 @@ for _, item in Config.PATIO_ITEMS do
 	end
 end
 
-local onChanged = function(_player: Player, _msg: string?) end
+local onChanged = function(_player: Player, _msg: string?, _fx: string?) end
 
 -- Checks Game Pass ownership with Roblox and stores it on the data (e.g. data.autoFeeder). Yields.
 function ShopService.refreshPasses(player: Player, data)
@@ -82,6 +82,27 @@ local function grantProduct(item, data, now: number)
 			data.fedUntil = before.fedUntil
 		end, if gotEgg then ("Starter Pack: +%d coins, a Beach Umbrella and a %s egg in your tank!"):format(item.coins, eggSpecies.name)
 			else ("Starter Pack: +%d coins and a Beach Umbrella! Tank full, so +%d coins instead of the egg."):format(item.coins, eggSpecies.eggPrice)
+	elseif item.key == "rareEgg" then
+		-- random unlocked species, always Albino or Golden; full tank = waits in the Egg Incubator
+		TankService.settle(data, now)
+		local speciesId, variant = TankService.rollRareEgg(data)
+		local species, v = Config.ById[speciesId], Config.VARIANTS[variant]
+		local before = { fishCount = #data.fish, nextUid = data.nextUid, fedUntil = data.fedUntil }
+		local label = ("%s %s %s"):format(v.icon, v.name, species.name)
+		if TankService.giveEgg(data, speciesId, now, variant) then
+			return function()
+				while #data.fish > before.fishCount do
+					table.remove(data.fish)
+				end
+				data.nextUid = before.nextUid
+				data.fedUntil = before.fedUntil
+			end, ("Rare Egg: a %s is growing in your tank! It sells for %sx."):format(label, tostring(v.mult))
+		end
+		data.incubator = data.incubator or {}
+		table.insert(data.incubator, { species = speciesId, variant = variant })
+		return function()
+			table.remove(data.incubator)
+		end, ("Rare Egg: a %s! Your tank is full, so it waits in the Egg Incubator until a slot is free."):format(label)
 	elseif item.key == "patio" then
 		-- goes to the inventory like a coin purchase; if it's full (10 of that item) we still grant
 		-- it: they paid Robux, so the cap must never eat a purchase
@@ -125,7 +146,7 @@ local function processReceipt(info)
 		table.remove(data.receipts, table.find(data.receipts, info.PurchaseId))
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-	onChanged(player, msg)
+	onChanged(player, msg, if item.key == "rareEgg" then "rare" else nil) -- rare = golden sparkle burst on the tank
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
