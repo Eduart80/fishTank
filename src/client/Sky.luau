@@ -33,6 +33,12 @@ function Sky.start()
 			tint.Contrast = (if storm then -0.05 else 0.08) * d
 			tint.Saturation = -0.25 * d
 			tint.TintColor = WHITE:Lerp(NIGHT_TINT, d)
+			-- clear nights: thin the clouds so the moon + stars show (storms keep their thick
+			-- clouds; the server replicates those and we leave them alone)
+			local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds")
+			if clouds and not storm then
+				clouds.Cover = 0.55 - 0.3 * d
+			end
 			task.wait(0.5)
 		end
 	end)
