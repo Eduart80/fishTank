@@ -113,7 +113,7 @@ local coinsBox = make("Frame", {
 	BackgroundTransparency = 0.3,
 	AnchorPoint = Vector2.new(1, 0),
 	Position = UDim2.new(1, -12, 0, 12),
-	Size = UDim2.new(0, 0, 0, 44),
+	Size = UDim2.new(0, 0, 0, 34), -- was 44 (user: shrink vertically)
 	AutomaticSize = Enum.AutomaticSize.X,
 	Parent = topGui,
 }, {
@@ -122,7 +122,7 @@ local coinsBox = make("Frame", {
 	make("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 })
 -- coin icon drawn from shapes (emoji coins don't render in Roblox fonts)
-make("Frame", { LayoutOrder = 1, BackgroundColor3 = Color3.fromRGB(245, 190, 40), Size = UDim2.new(0, 30, 0, 30), Parent = coinsBox }, {
+make("Frame", { LayoutOrder = 1, BackgroundColor3 = Color3.fromRGB(245, 190, 40), Size = UDim2.new(0, 24, 0, 24), Parent = coinsBox }, {
 	make("UICorner", { CornerRadius = UDim.new(1, 0) }),
 	make("UIStroke", { Color = Color3.fromRGB(190, 130, 20), Thickness = 2 }),
 	make("Frame", { BackgroundColor3 = Color3.fromRGB(255, 220, 90), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.62, 0.62) }, {
@@ -134,9 +134,9 @@ local coinsLabel = make("TextLabel", {
 	BackgroundTransparency = 1,
 	Font = FONT_BOLD,
 	Text = "0",
-	TextSize = 22,
+	TextSize = 19,
 	TextColor3 = C.text,
-	Size = UDim2.new(0, 0, 0, 30),
+	Size = UDim2.new(0, 0, 0, 24),
 	AutomaticSize = Enum.AutomaticSize.X,
 	Parent = coinsBox,
 })
@@ -146,8 +146,8 @@ local streakLabel = make("TextLabel", {
 	BackgroundColor3 = Color3.new(0, 0, 0),
 	BackgroundTransparency = 0.3,
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -12, 0, 62),
-	Size = UDim2.new(0, 0, 0, 28),
+	Position = UDim2.new(1, -12, 0, 50), -- under the slimmer coins pill
+	Size = UDim2.new(0, 0, 0, 24),
 	AutomaticSize = Enum.AutomaticSize.X,
 	Font = FONT_BOLD,
 	TextSize = 16,
@@ -163,8 +163,8 @@ local forecastLabel = make("TextButton", {
 	BackgroundColor3 = Color3.new(0, 0, 0),
 	BackgroundTransparency = 0.3,
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -12, 0, 96),
-	Size = UDim2.new(0, 0, 0, 28),
+	Position = UDim2.new(1, -12, 0, 78), -- ends above the windows' X close button
+	Size = UDim2.new(0, 0, 0, 24),
 	AutomaticSize = Enum.AutomaticSize.X,
 	Font = FONT_BOLD,
 	TextSize = 15,
