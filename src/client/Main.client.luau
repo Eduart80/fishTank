@@ -1,7 +1,7 @@
 -- Client UI. Shows what the server sends and asks the server to act. It never decides anything.
 -- v1 is UI-only (no 3D tank yet) so we can test whether the market loop is fun.
 
-print("[FishMarket] client build 2026-11-13e passes + top 100") -- proves Studio runs the synced script
+print("[FishMarket] client build 2026-11-13f market hall + hall of fame") -- proves Studio runs the synced script
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

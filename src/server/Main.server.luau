@@ -1,5 +1,5 @@
 -- Server entry point: remotes, player lifecycle, the 5-second game tick.
-print("[FishMarket] SERVER build 2026-11-13e passes + top 100") -- proves Studio runs the synced script
+print("[FishMarket] SERVER build 2026-11-13f market hall + hall of fame") -- proves Studio runs the synced script
 -- Rule: the client only ASKS. Every coin, fish and price is decided here.
 
 local Players = game:GetService("Players")

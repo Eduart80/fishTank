@@ -403,16 +403,30 @@ local function buildMarket(parent: Instance)
 	model.Name = "Market"
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
 
-	local boardCF = CFrame.new(0, FLOOR_Y + 14, -38) * CFrame.Angles(0, math.pi, 0) -- front face looks at the plaza
-	local board = part({ Name = "Board", Size = Vector3.new(44, 24, 1), CFrame = boardCF, Material = Enum.Material.SmoothPlastic, Color = COLORS.board, Parent = model })
-	for _, x in { -20, 20 } do
-		part({ Name = "Post", Size = Vector3.new(1.5, FLOOR_Y + 26, 1.5), CFrame = CFrame.new(x, (FLOOR_Y + 26) / 2, -38.6), Material = Enum.Material.WoodPlanks, Color = COLORS.wood, Parent = model })
+	-- MARKET HALL at the south edge of the plaza: the only gap between tanks without a pier
+	-- (tanks at 157.5 / 202.5 deg). Even with both neighbours at Sea Pen size, about +-16 studs
+	-- stay free there, so the board is 30 wide. The middle of the plaza stays open.
+	local HALL_Z = -86
+	local BOARD_W, BOARD_H = 30, 18
+	local boardCF = CFrame.new(0, FLOOR_Y + 15, HALL_Z) * CFrame.Angles(0, math.pi, 0) -- front face looks at the plaza
+	local board = part({ Name = "Board", Size = Vector3.new(BOARD_W, BOARD_H, 1), CFrame = boardCF, Material = Enum.Material.SmoothPlastic, Color = COLORS.board, Parent = model })
+	for _, x in { -(BOARD_W / 2 - 0.5), BOARD_W / 2 - 0.5 } do
+		part({ Name = "Post", Size = Vector3.new(1.5, FLOOR_Y + 25, 1.5), CFrame = CFrame.new(x, (FLOOR_Y + 25) / 2, HALL_Z - 0.6), Material = Enum.Material.WoodPlanks, Color = COLORS.wood, Parent = model })
+	end
+	-- striped awning under the board, over the trade counter (same look as the Harbor Store)
+	local stripes = 8
+	for k = 0, stripes - 1 do
+		local x = -BOARD_W / 2 + (k + 0.5) * BOARD_W / stripes
+		part({ Name = "Awning", Size = Vector3.new(BOARD_W / stripes, 0.25, 7), CFrame = CFrame.new(x, FLOOR_Y + 5.6, HALL_Z + 3.6) * CFrame.Angles(math.rad(14), 0, 0), Material = Enum.Material.Fabric, Color = if k % 2 == 0 then Color3.fromRGB(40, 120, 200) else Color3.fromRGB(250, 245, 235), Parent = model })
+	end
+	for _, x in { -(BOARD_W / 2 - 1), BOARD_W / 2 - 1 } do
+		part({ Name = "AwningPost", Size = Vector3.new(0.8, 4.6, 0.8), CFrame = CFrame.new(x, FLOOR_Y + 2.3, HALL_Z + 6.8), Material = Enum.Material.WoodPlanks, Color = COLORS.wood, Parent = model })
 	end
 
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 25
+	gui.PixelsPerStud = 25 * 44 / BOARD_W -- same text size as the old 44-wide board
 	gui.LightInfluence = 0
 	gui.Parent = board
 
@@ -447,7 +461,7 @@ local function buildMarket(parent: Instance)
 	end
 	boardEvent = textLabel({ Text = "", TextColor3 = Color3.fromRGB(220, 160, 255), Position = UDim2.fromScale(0.05, 0.86), Size = UDim2.fromScale(0.9, 0.1), Parent = gui })
 
-	local counter = part({ Name = "Counter", Size = Vector3.new(24, 4, 4), CFrame = CFrame.new(0, FLOOR_Y + 2, -30), Material = Enum.Material.WoodPlanks, Color = COLORS.wood, Parent = model })
+	local counter = part({ Name = "Counter", Size = Vector3.new(BOARD_W - 4, 4, 3), CFrame = CFrame.new(0, FLOOR_Y + 2, HALL_Z + 8.5), Material = Enum.Material.WoodPlanks, Color = COLORS.wood, Parent = model })
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "MarketPrompt"
 	prompt.ActionText = "Trade"

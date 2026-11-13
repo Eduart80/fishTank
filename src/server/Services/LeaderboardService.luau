@@ -116,70 +116,76 @@ local function refresh(getData)
 end
 
 local function renderBoard()
-	for i, row in boardRows do
-		local e = top[i]
+	for _, row in boardRows do
+		local e = top[row.index]
 		row.name.Text = if e then ("%d. %s"):format(e.rank, e.name) else ""
 		row.score.Text = if e then "$" .. fmt(e.score) else ""
 	end
 end
 
--- Top-10 board on the plaza (east side, facing the centre)
+-- HALL OF FAME arch over the path to the main pier (pier walkway starts at z 92, x -4..4).
+-- Everyone walks under it on the way to the boats / Reef Ferry. Top 10 on BOTH faces.
 local function buildBoard(parent: Instance)
 	local model = Instance.new("Model")
-	model.Name = "TopBoard"
+	model.Name = "HallOfFame"
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
 	local floorY = 2.1
-	local pos = Vector3.new(36, floorY + 9, 0)
-	local cf = CFrame.lookAt(pos, Vector3.new(0, pos.Y, 0)) -- front faces the plaza centre
-	local board = Instance.new("Part")
-	board.Name = "Board"
-	board.Size = Vector3.new(16, 14, 0.6)
-	board.CFrame = cf
-	board.Color = Color3.fromRGB(14, 28, 44)
-	board.Material = Enum.Material.SmoothPlastic
-	board.Anchored = true
-	board.Parent = model
-	for _, x in { -7.5, 7.5 } do
-		local post = Instance.new("Part")
-		post.Name = "Post"
-		post.Size = Vector3.new(0.6, floorY + 16, 0.6)
-		local at = (cf * CFrame.new(x, 0, 0.4)).Position -- behind the board, at its left/right edge
-		post.CFrame = CFrame.new(at.X, (floorY + 16) / 2, at.Z)
-		post.Color = Color3.fromRGB(110, 78, 48)
-		post.Material = Enum.Material.WoodPlanks
-		post.Anchored = true
-		post.Parent = model
+	local Z = 80
+	local W, H = 17, 11
+	local bottom = floorY + 8.5 -- players (and hats) fit under it
+	local function part(name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.CFrame = cf
+		p.Color = color
+		p.Material = material
+		p.Anchored = true
+		p.Parent = model
+		return p
 	end
+	local wood = Color3.fromRGB(110, 78, 48)
+	local postH = bottom + H + 0.5 - floorY
+	for _, x in { -(W / 2 + 0.6), W / 2 + 0.6 } do
+		part("Post", Vector3.new(1.2, postH, 1.2), CFrame.new(x, floorY + postH / 2, Z), wood, Enum.Material.WoodPlanks)
+	end
+	part("Beam", Vector3.new(W + 3, 1, 1.6), CFrame.new(0, bottom + H + 0.5, Z), wood, Enum.Material.WoodPlanks)
+	local board = part("Board", Vector3.new(W, H, 0.6), CFrame.new(0, bottom + H / 2, Z), Color3.fromRGB(14, 28, 44), Enum.Material.SmoothPlastic)
 
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 30
-	gui.LightInfluence = 0
-	gui.Parent = board
-	local function label(text: string, y: number, h: number, color: Color3, xAlign: Enum.TextXAlignment, x: number, w: number)
-		local l = Instance.new("TextLabel")
-		l.BackgroundTransparency = 1
-		l.Position = UDim2.fromScale(x, y)
-		l.Size = UDim2.fromScale(w, h)
-		l.Font = Enum.Font.GothamBold
-		l.TextScaled = true
-		l.TextXAlignment = xAlign
-		l.TextColor3 = color
-		l.Text = text
-		l.Parent = gui
-		return l
+	local function face(normal: Enum.NormalId)
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = normal
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 30
+		gui.LightInfluence = 0
+		gui.Parent = board
+		local function label(text: string, y: number, h: number, color: Color3, xAlign: Enum.TextXAlignment, x: number, w: number)
+			local l = Instance.new("TextLabel")
+			l.BackgroundTransparency = 1
+			l.Position = UDim2.fromScale(x, y)
+			l.Size = UDim2.fromScale(w, h)
+			l.Font = Enum.Font.GothamBold
+			l.TextScaled = true
+			l.TextXAlignment = xAlign
+			l.TextColor3 = color
+			l.Text = text
+			l.Parent = gui
+			return l
+		end
+		label("🏆 HALL OF FAME", 0.03, 0.11, Color3.fromRGB(255, 210, 90), Enum.TextXAlignment.Center, 0.05, 0.9)
+		label("top fish tycoons · coins earned · all servers", 0.14, 0.05, Color3.fromRGB(170, 200, 220), Enum.TextXAlignment.Center, 0.05, 0.9)
+		for i = 1, BOARD_ROWS do
+			local y = 0.21 + (i - 1) * 0.077
+			local color = if i == 1 then Color3.fromRGB(255, 215, 80) elseif i == 2 then Color3.fromRGB(215, 220, 230) elseif i == 3 then Color3.fromRGB(225, 160, 100) else Color3.fromRGB(235, 240, 245)
+			table.insert(boardRows, {
+				name = label("", y, 0.065, color, Enum.TextXAlignment.Left, 0.06, 0.58),
+				score = label("", y, 0.065, color, Enum.TextXAlignment.Right, 0.62, 0.32),
+				index = i,
+			})
+		end
 	end
-	label("🏆 TOP FISH TYCOONS", 0.03, 0.1, Color3.fromRGB(255, 210, 90), Enum.TextXAlignment.Center, 0.05, 0.9)
-	label("coins earned from selling · all servers", 0.13, 0.05, Color3.fromRGB(170, 200, 220), Enum.TextXAlignment.Center, 0.05, 0.9)
-	for i = 1, BOARD_ROWS do
-		local y = 0.2 + (i - 1) * 0.078
-		local color = if i == 1 then Color3.fromRGB(255, 215, 80) elseif i == 2 then Color3.fromRGB(215, 220, 230) elseif i == 3 then Color3.fromRGB(225, 160, 100) else Color3.fromRGB(235, 240, 245)
-		table.insert(boardRows, {
-			name = label("", y, 0.065, color, Enum.TextXAlignment.Left, 0.06, 0.58),
-			score = label("", y, 0.065, color, Enum.TextXAlignment.Right, 0.62, 0.32),
-		})
-	end
+	face(Enum.NormalId.Front) -- -Z side: faces the plaza
+	face(Enum.NormalId.Back) -- +Z side: faces the pier (read it on the way back)
 	model.Parent = parent
 end
 
