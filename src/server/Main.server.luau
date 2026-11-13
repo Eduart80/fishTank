@@ -557,7 +557,7 @@ end)
 if IS_STUDIO then
 	-- DevCmd: the Studio-only test panel (client/DevPanel) sets these switches from the CLIENT view,
 	-- so you never have to switch to Server view (where your character can't move).
-	local ALLOWED = { TestStorm = "boolean", TestMutate = "boolean", TestMoon = "string", TestTop = "boolean", TestPasses = "boolean", TestFx = "string", TestClock = "number", SetSlots = "number" }
+	local ALLOWED = { TestStorm = "boolean", TestMutate = "boolean", TestMoon = "string", TestTop = "boolean", TestPasses = "boolean", TestFx = "string", TestClock = "number", SetSlots = "number", TestRich = "number" }
 	local devRemote = Instance.new("RemoteEvent")
 	devRemote.Name = "DevCmd"
 	devRemote.Parent = remotes
@@ -569,6 +569,21 @@ if IS_STUDIO then
 			workspace:SetAttribute(name, "") -- so the same effect can play again
 		end
 		workspace:SetAttribute(name, value)
+	end)
+	-- TestRich: sets the first player's lifetime earned (unlocks fish, Harbor Master with a Sea Pen)
+	-- and tops up coins to at least the same amount. Studio save only.
+	workspace:SetAttribute("TestRich", 0)
+	workspace:GetAttributeChangedSignal("TestRich"):Connect(function()
+		local amount = workspace:GetAttribute("TestRich")
+		local player = Players:GetPlayers()[1]
+		local data = player and DataService.get(player)
+		if not data or type(amount) ~= "number" or amount <= 0 then
+			return
+		end
+		data.stats.earned = amount
+		data.coins = math.max(data.coins, amount)
+		pushState(player, data, os.time()) -- runs the unlock / Harbor Master celebration
+		print("[TestRich] earned + coins =", amount)
 	end)
 	workspace:SetAttribute("TestStorm", false)
 	workspace:SetAttribute("TestMutate", false) -- true = every weather mutation roll succeeds

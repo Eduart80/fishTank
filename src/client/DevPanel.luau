@@ -130,6 +130,12 @@ function DevPanel.start()
 	})
 	row("Passes", { { text = "All 4", attr = "TestPasses", value = true }, { text = "None", attr = "TestPasses", value = false } })
 	row("Top 100", { { text = "Sample", attr = "TestTop", value = true }, { text = "Real", attr = "TestTop", value = false } })
+	row("Rich", {
+		{ text = "1.5k", attr = "TestRich", value = 1500 },
+		{ text = "8k", attr = "TestRich", value = 8000 },
+		{ text = "30k", attr = "TestRich", value = 30000 },
+		{ text = "100k", attr = "TestRich", value = 100000 },
+	})
 	row("Tank", {
 		{ text = "6", attr = "SetSlots", value = 6 },
 		{ text = "10", attr = "SetSlots", value = 10 },
