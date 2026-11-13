@@ -138,7 +138,7 @@ Config.DAY_NIGHT = { daySeconds = 20 * 60, nightSeconds = 5 * 60 }
 -- Audio, search "thunder" / "rain loop"). Empty = silent (rain + lightning still show).
 Config.THUNDER_SOUND_ID = "rbxassetid://130457325001606" -- sudden close thunder crack (picked 2026-11-13)
 Config.THUNDER_FAR_SOUND_ID = "rbxassetid://102164464566453" -- distant rumble, for bolts on the horizon
-Config.RAIN_SOUND_ID = ""
+Config.RAIN_SOUND_ID = "rbxassetid://1516791621" -- rain loop (picked 2026-11-13)
 
 -- Fishing boat visitor (server/BoatService). Studio comes much more often so you can test it.
 Config.BOAT = {
