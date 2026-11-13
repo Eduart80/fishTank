@@ -149,13 +149,13 @@ Config.BLOOD_MOON = { every = 4, phase = { key = "blood", name = "Blood Moon", i
 Config.MOON_SIZE = 18 -- angular size of the moon (user picked 18 after trying 24, 11, 20)
 Config.MOON_PHASES = {
 	{ key = "new", name = "New Moon", icon = "🌑", texture = "" }, -- no moon, only stars
-	{ key = "crescent_waxing", name = "Waxing Crescent", icon = "🌒", texture = "" },
-	{ key = "half_waxing", name = "First Quarter", icon = "🌓", texture = "" },
-	{ key = "gibbous_waxing", name = "Waxing Gibbous", icon = "🌔", texture = "" },
+	{ key = "crescent_waxing", name = "Waxing Crescent", icon = "🌒", texture = "rbxassetid://94721730290772" },
+	{ key = "half_waxing", name = "First Quarter", icon = "🌓", texture = "rbxassetid://73079641997762" },
+	{ key = "gibbous_waxing", name = "Waxing Gibbous", icon = "🌔", texture = "rbxassetid://140171842455318" },
 	{ key = "full", name = "Full Moon", icon = "🌕", texture = "rbxasset://sky/moon.jpg" },
-	{ key = "gibbous_waning", name = "Waning Gibbous", icon = "🌖", texture = "" },
-	{ key = "half_waning", name = "Last Quarter", icon = "🌗", texture = "" },
-	{ key = "crescent_waning", name = "Waning Crescent", icon = "🌘", texture = "" },
+	{ key = "gibbous_waning", name = "Waning Gibbous", icon = "🌖", texture = "rbxassetid://120288814926988" },
+	{ key = "half_waning", name = "Last Quarter", icon = "🌗", texture = "rbxassetid://114245571977234" },
+	{ key = "crescent_waning", name = "Waning Crescent", icon = "🌘", texture = "rbxassetid://75101687311601" },
 }
 
 -- Storm sounds (client/Weather). Paste Roblox audio ids from the Studio Toolbox (Creator Store ->
