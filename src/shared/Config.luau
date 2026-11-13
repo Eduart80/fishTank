@@ -143,7 +143,7 @@ Config.DAY_NIGHT = { daySeconds = 20 * 60, nightSeconds = 5 * 60 }
 -- Moonlit fish only on FULL MOON nights. Texture ids: upload art/moon_*.png to Roblox (Creator Hub
 -- -> Images/Decals) and paste the ids here. Empty = that phase shows no moon until uploaded.
 -- STUDIO: Workspace attribute "TestMoon" = a phase key (e.g. full) forces that phase.
-Config.MOON_SIZE = 20 -- angular size of the moon (user: 24 too huge, 11 too small, wanted it bigger again)
+Config.MOON_SIZE = 18 -- angular size of the moon (user picked 18 after trying 24, 11, 20)
 Config.MOON_PHASES = {
 	{ key = "new", name = "New Moon", icon = "🌑", texture = "" }, -- no moon, only stars
 	{ key = "crescent_waxing", name = "Waxing Crescent", icon = "🌒", texture = "" },
