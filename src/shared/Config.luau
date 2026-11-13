@@ -187,10 +187,10 @@ Config.ROBUX = {
 	{ key = "autoFeeder", kind = "pass", id = 2076124464, name = "Auto-Feeder", text = "Your fish never go hungry, even offline: they keep growing and never starve." },
 	{ key = "rareEgg", kind = "product", id = 3730899968, name = "Rare Egg", text = "A mystery Guppy, Clownfish or Salmon egg (ones you have unlocked). Always hatches Albino (2x) or Golden (3x)!" },
 	-- Game Passes added 2026-11-13: id 0 = "Not set up" until created on Creator Hub (Monetization -> Passes)
-	{ key = "luckyCharm", kind = "pass", id = 0, name = "Lucky Charm", text = "Storms and full moons love you: Stormborn 40% (was 25%), Moonlit 45% (was 30%)." },
-	{ key = "vip", kind = "pass", id = 0, name = "VIP", text = "Gold VIP name tag + [VIP] in chat + double coins from every daily reward." },
-	{ key = "bigTank", kind = "pass", id = 0, name = "Bigger Tank", text = "+2 fish slots forever (max 26 instead of 24)." },
-	{ key = "weatherRadio", kind = "pass", id = 0, name = "Weather Radio", text = "See when the next storm and full moon come, so you can time your eggs." },
+	{ key = "luckyCharm", kind = "pass", id = 2087996536, name = "Lucky Charm", text = "Storms and full moons love you: Stormborn 40% (was 25%), Moonlit 45% (was 30%)." },
+	{ key = "vip", kind = "pass", id = 2089568498, name = "VIP", text = "Gold VIP name tag + [VIP] in chat + double coins from every daily reward." },
+	{ key = "bigTank", kind = "pass", id = 2089022518, name = "Bigger Tank", text = "+2 fish slots forever (max 26 instead of 24)." },
+	{ key = "weatherRadio", kind = "pass", id = 2089628546, name = "Weather Radio", text = "See when the next storm and full moon come, so you can time your eggs." },
 	{ key = "growBoost", kind = "product", id = 3729887473, name = "Grow Boost (1 hour)", text = "All your fish grow 2x faster for 1 hour. Buy again to add time.", seconds = 3600 },
 }
 
