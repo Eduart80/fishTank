@@ -88,6 +88,7 @@ local function pushState(player: Player, data, now: number)
 	state.inventory, state.patio = patio.inventory, patio.patio
 	state.streak = if data.daily then data.daily.streak else 0
 	-- Weather Radio pass: when the next storm / full moon comes (server-only storm schedule)
+	state.radioHidden = data.radioHidden == true
 	if data.weatherRadio then
 		state.forecast = { storm = MarketService.nextEventStart(now, "storm"), fullMoon = DayNight.nextFullMoon(now) }
 	end
@@ -218,6 +219,14 @@ local handlers = {
 	end,
 	pickUpDecor = function(data, _now, spot)
 		return PatioService.pickUp(data, spot)
+	end,
+	-- Weather Radio badge: folded (just the icon) or open. Only a display setting.
+	toggleRadio = function(data)
+		if not data.weatherRadio then
+			return false, "You need the Weather Radio pass"
+		end
+		data.radioHidden = not data.radioHidden
+		return true, nil
 	end,
 }
 

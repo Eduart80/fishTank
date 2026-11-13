@@ -158,7 +158,8 @@ local streakLabel = make("TextLabel", {
 }, { make("UICorner", { CornerRadius = UDim.new(1, 0) }), make("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }) })
 
 -- Weather Radio pass: forecast badge under the streak badge
-local forecastLabel = make("TextLabel", {
+local forecastLabel = make("TextButton", {
+	AutoButtonColor = true,
 	BackgroundColor3 = Color3.new(0, 0, 0),
 	BackgroundTransparency = 0.3,
 	AnchorPoint = Vector2.new(1, 0),
@@ -336,6 +337,11 @@ local function act(action: string, arg)
 		showToast(result.msg)
 	end
 end
+
+-- Weather Radio badge: tap to fold / unfold (saved on the server)
+forecastLabel.Activated:Connect(function()
+	act("toggleRadio")
+end)
 
 sellAllButton.Activated:Connect(function()
 	act("sellAllAdults")
@@ -587,7 +593,8 @@ local function renderTank()
 			end
 			return if t <= now + 1 then "NOW" else "in " .. fmtTime(t - now)
 		end
-		forecastLabel.Text = ("📻 Storm %s · 🌕 Full moon %s"):format(when(forecast.storm), when(forecast.fullMoon))
+		-- tap the badge to fold it to just the radio icon (saved per player)
+		forecastLabel.Text = if tank.radioHidden then "📻" else ("📻 Storm %s · 🌕 Full moon %s"):format(when(forecast.storm), when(forecast.fullMoon))
 	end
 
 
