@@ -72,6 +72,7 @@ function Weather.start()
 
 	local rainSound = makeSound(Config.RAIN_SOUND_ID, 0, true)
 	local thunderSound = makeSound(Config.THUNDER_SOUND_ID, 0.8, false)
+	local farThunderSound = makeSound(Config.THUNDER_FAR_SOUND_ID or "", 0.7, false)
 
 	local stormy = false
 	local nextStrike = 0
@@ -114,13 +115,16 @@ function Weather.start()
 			flash.Brightness = 0.3
 			TweenService:Create(flash, TweenInfo.new(0.4), { Brightness = 0 }):Play()
 		end)
-		-- sound by distance: close = loud sharp crack right away; far = later, quieter, deeper rumble
-		if thunderSound then
+		-- sound by distance: close = loud crack right away; far = distant rumble a bit later
+		-- (light is faster than sound). No far sound set = the crack, quieter and deeper.
+		local sound = if close then thunderSound else (farThunderSound or thunderSound)
+		if sound then
 			local delay = if close then 0.1 + math.random() * 0.3 else 1.5 + math.random() * 1.5
+			local deepened = not close and sound == thunderSound
 			task.delay(delay, function()
-				thunderSound.Volume = if close then 1 else 0.35
-				thunderSound.PlaybackSpeed = if close then 0.95 + math.random() * 0.1 else 0.65 + math.random() * 0.1
-				thunderSound:Play()
+				sound.Volume = if close then 1 elseif deepened then 0.35 else 0.7
+				sound.PlaybackSpeed = if deepened then 0.65 + math.random() * 0.1 else 0.95 + math.random() * 0.1
+				sound:Play()
 			end)
 		end
 	end
