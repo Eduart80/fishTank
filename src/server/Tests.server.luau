@@ -486,6 +486,27 @@ test("Blood Moon: every Nth full moon, Bloodlit beats Moonlit", function(check)
 	check(fish.variant == "blood", "no Bloodlit")
 end)
 
+test("Milestones: old saves are set up silently, later unlocks are announced once", function(check)
+	local d = newPlayer(now)
+	d.stats.earned = Config.ById.salmon.unlockEarned -- an "old save" that already has Clownfish + Salmon
+	local first = RewardsService.checkMilestones(d)
+	check(#first.unlocked == 0 and d.unlocked.clownfish and d.unlocked.salmon, "old unlocks were announced or not recorded")
+	d.stats.earned = Config.ById.tuna.unlockEarned
+	local second = RewardsService.checkMilestones(d)
+	check(#second.unlocked == 1 and second.unlocked[1].id == "tuna", "tuna unlock not announced")
+	check(#RewardsService.checkMilestones(d).unlocked == 0, "announced twice")
+end)
+
+test("Harbor Master: Koi + Sea Pen, announced once", function(check)
+	local d = newPlayer(now)
+	RewardsService.checkMilestones(d) -- set up
+	d.stats.earned = Config.ById.koi.unlockEarned
+	check(not RewardsService.checkMilestones(d).harborMaster, "Harbor Master without the Sea Pen")
+	d.slots = Config.TANK_STAGES[#Config.TANK_STAGES].minSlots
+	check(RewardsService.checkMilestones(d).harborMaster and d.harborMaster, "no Harbor Master moment")
+	check(not RewardsService.checkMilestones(d).harborMaster, "Harbor Master announced twice")
+end)
+
 -- First-session fast growth -------------------------------------------------
 test("Starter eggs grow fast until adult; after STARTER_SALES sales eggs are normal", function(check)
 	local d = newPlayer(now)

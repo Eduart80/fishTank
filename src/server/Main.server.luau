@@ -1,5 +1,5 @@
 -- Server entry point: remotes, player lifecycle, the 5-second game tick.
-print("[FishMarket] SERVER build 2026-11-13j blood moon") -- proves Studio runs the synced script
+print("[FishMarket] SERVER build 2026-11-13k unlocks + harbor master") -- proves Studio runs the synced script
 -- Rule: the client only ASKS. Every coin, fish and price is decided here.
 
 local Players = game:GetService("Players")
@@ -82,7 +82,48 @@ local function updateLeaderstats(player: Player, data)
 	stats.Fish.Value = #data.fish
 end
 
+-- Unlock celebrations + Harbor Master (see RewardsService.checkMilestones). Cheap; runs on every push.
+local function celebrate(player: Player, data)
+	local result = RewardsService.checkMilestones(data)
+	player:SetAttribute("HarborMaster", data.harborMaster == true) -- title above the head
+	local function others(text: string)
+		for _, other in Players:GetPlayers() do
+			if other ~= player then
+				notifyRemote:FireClient(other, text, 5)
+			end
+		end
+	end
+	-- unlocks happen on a SALE: wait a moment so the "Sold N fish" toast doesn't cover the celebration
+	local AFTER_SALE = 2.5
+	for _, species in result.unlocked do
+		task.delay(AFTER_SALE, function()
+			if player.Parent then
+				notifyRemote:FireClient(player, ("🎉 NEW FISH UNLOCKED: %s! Buy its egg in the Market."):format(species.name), 7)
+			end
+		end)
+		others(("🎉 %s unlocked the %s!"):format(player.DisplayName, species.name))
+		AnalyticsTracker.custom(player, "Unlock_" .. species.name, 1)
+	end
+	if #result.unlocked > 0 or result.harborMaster then
+		local top = WorldService.tankTop(player)
+		if top then
+			fxRemote:FireAllClients("rare", top) -- golden sparkle burst on their tank
+		end
+	end
+	if result.harborMaster then
+		task.delay(AFTER_SALE + (if #result.unlocked > 0 then 7.5 else 0), function()
+			if not player.Parent then
+				return
+			end
+			notifyRemote:FireClient(player, "⚓ You are a HARBOR MASTER! You have the Koi and the Sea Pen. The Coral Reef is next: take the Reef Ferry at the main pier for a preview!", 10)
+			others(("⚓ %s is now a HARBOR MASTER!"):format(player.DisplayName))
+		end)
+		AnalyticsTracker.custom(player, "HarborMaster", 1)
+	end
+end
+
 local function pushState(player: Player, data, now: number)
+	celebrate(player, data)
 	local state = TankService.publicState(data, now)
 	local patio = PatioService.publicState(data)
 	state.inventory, state.patio = patio.inventory, patio.patio
@@ -369,31 +410,44 @@ local function vipTag(player: Player)
 	if not head then
 		return
 	end
+	-- one tag for both: "⚓ Harbor Master" title line (earned) + "👑 VIP Name" line (pass)
+	local vip = player:GetAttribute("VIP") == true
+	local master = player:GetAttribute("HarborMaster") == true
 	local existing = head:FindFirstChild("VipTag")
-	if player:GetAttribute("VIP") ~= true then
-		if existing then
-			existing:Destroy()
-		end
-		return
-	end
 	if existing then
+		existing:Destroy()
+	end
+	if not vip and not master then
 		return
 	end
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "VipTag"
-	gui.Size = UDim2.fromOffset(160, 26)
-	gui.StudsOffset = Vector3.new(0, 2.3, 0) -- just above the head (3.2 looked like part of the Hall of Fame board)
+	gui.Size = UDim2.fromOffset(180, if vip and master then 44 else 24)
+	gui.StudsOffset = Vector3.new(0, if vip and master then 2.8 else 2.3, 0) -- just above the head
 	gui.AlwaysOnTop = false
 	gui.MaxDistance = 80
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(255, 210, 74)
-	label.TextStrokeTransparency = 0.3
-	label.Text = "👑 VIP " .. player.DisplayName
-	label.Parent = gui
+	local list = Instance.new("UIListLayout")
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.Parent = gui
+	local function line(text: string, color: Color3, order: number)
+		local label = Instance.new("TextLabel")
+		label.LayoutOrder = order
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.new(1, 0, 0, 22)
+		label.Font = Enum.Font.GothamBold
+		label.TextScaled = true
+		label.TextColor3 = color
+		label.TextStrokeTransparency = 0.3
+		label.Text = text
+		label.Parent = gui
+	end
+	if master then
+		line("⚓ Harbor Master", Color3.fromRGB(110, 220, 230), 1)
+	end
+	if vip then
+		line("👑 VIP " .. player.DisplayName, Color3.fromRGB(255, 210, 74), 2)
+	end
 	gui.Parent = head
 end
 local function hookVip(player: Player)
@@ -402,6 +456,9 @@ local function hookVip(player: Player)
 		vipTag(player)
 	end)
 	player:GetAttributeChangedSignal("VIP"):Connect(function()
+		vipTag(player)
+	end)
+	player:GetAttributeChangedSignal("HarborMaster"):Connect(function()
 		vipTag(player)
 	end)
 	vipTag(player)

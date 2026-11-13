@@ -86,6 +86,30 @@ function RewardsService.applyInvite(newData, inviterData, inviterName: string, n
 	return inviteeText, inviterText
 end
 
+-- Milestones: newly unlocked fish + the Harbor Master moment (Koi unlocked AND Sea Pen).
+-- Returns { unlocked = { species... }, harborMaster = true if it JUST happened }.
+-- First call on an old save only records what the player already has (no announcement spam).
+function RewardsService.checkMilestones(data)
+	local result = { unlocked = {}, harborMaster = false }
+	local first = data.unlocked == nil
+	data.unlocked = data.unlocked or {}
+	for _, species in Config.Species do
+		if (species.unlockEarned or 0) > 0 and data.stats.earned >= species.unlockEarned and not data.unlocked[species.id] then
+			data.unlocked[species.id] = true
+			if not first then
+				table.insert(result.unlocked, species)
+			end
+		end
+	end
+	local top = Config.Species[#Config.Species]
+	local seaPen = Config.TANK_STAGES[#Config.TANK_STAGES]
+	if not data.harborMaster and data.unlocked[top.id] and data.slots >= seaPen.minSlots then
+		data.harborMaster = true
+		result.harborMaster = not first
+	end
+	return result
+end
+
 -- "New" = data created in the last few minutes (old saves have no `created` = never new).
 function RewardsService.isNewPlayer(data, now: number): boolean
 	return data.created ~= nil and now - data.created < 600
