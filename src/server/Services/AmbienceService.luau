@@ -139,7 +139,7 @@ function AmbienceService.start()
 
 	set(get(Lighting, "Sky"), {
 		SunAngularSize = 7, -- was 14: a giant white ball at sunset
-		MoonAngularSize = 24, -- big full moon (was 9: too small to notice; Moonlit fish need a visible moon)
+		MoonAngularSize = 0, -- client/Sky shows the moon per phase (Config.MOON_SIZE); hidden until then
 		MoonTextureId = "rbxasset://sky/moon.jpg",
 		StarCount = 3000,
 		CelestialBodiesShown = true,

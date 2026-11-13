@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DayNight = require(Shared:WaitForChild("DayNight"))
+local Config = require(Shared:WaitForChild("Config"))
 local RunService = game:GetService("RunService")
 local IS_STUDIO = RunService:IsStudio()
 
@@ -51,7 +52,7 @@ function Sky.start()
 				shownPhase = phase.key
 				if phase.texture ~= "" then
 					sky.MoonTextureId = phase.texture
-					sky.MoonAngularSize = 24
+					sky.MoonAngularSize = Config.MOON_SIZE
 				else
 					sky.MoonAngularSize = 0
 				end
