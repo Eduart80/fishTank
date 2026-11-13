@@ -968,12 +968,12 @@ function WorldService.updateBoard(snapshot)
 		local hist = snapshot.history[species.id]
 		local first = (hist and hist[1]) or price
 		local pct = (price - first) / first * 100
-		row.price.Text = tostring(math.floor(price + 0.5))
+		row.price.Text = "$" .. tostring(math.floor(price + 0.5))
 		row.change.Text = ("%s%.1f%%"):format(if pct >= 0 then "+" else "", pct)
 		row.change.TextColor3 = if pct >= 0 then COLORS.up else COLORS.down
 		local egg = snapshot.eggPrices[species.id]
 		local rising = egg > species.eggPrice or (snapshot.eggDemand[species.id] or 0) >= MarketMath.EGG_DEMAND_MARKER
-		row.egg.Text = if rising then tostring(egg) .. " ▲" else tostring(egg)
+		row.egg.Text = if rising then "$" .. tostring(egg) .. " ▲" else "$" .. tostring(egg)
 		row.egg.TextColor3 = if rising then COLORS.down else COLORS.text -- red ▲ = people are buying, price going up
 		row.growing.Text = tostring(snapshot.growing[species.id])
 	end

@@ -477,7 +477,7 @@ local function renderMarket()
 		local row = marketRows[species.id]
 		local current = market.prices[species.id]
 		local hist = market.history[species.id] or {}
-		row.price.Text = fmt(current)
+		row.price.Text = "$" .. fmt(current)
 		local growingCount = (market.growing and market.growing[species.id]) or 0
 		row.growing.Text = if growingCount > 0 then ("%s growing worldwide"):format(fmt(growingCount)) else "none growing"
 
@@ -602,7 +602,7 @@ local function renderTank()
 			row.barFill.Size = UDim2.new((age - 1) / Config.EXTRA_GROWTH_PERIODS, 0, 1, 0)
 			local price = market and species and market.prices[fish.species]
 			if price then
-				row.info.Text = ("Size %.2fx · sells ~%s"):format(size, fmt(price * size * Config.variantMult(fish) * (1 - Config.MARKET_FEE)))
+				row.info.Text = ("Size %.2fx · sells ~$%s"):format(size, fmt(price * size * Config.variantMult(fish) * (1 - Config.MARKET_FEE)))
 			else
 				row.info.Text = ("Size %.2fx"):format(size)
 			end
