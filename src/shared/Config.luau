@@ -104,6 +104,11 @@ Config.RESCUE_COINS = 20
 -- Empty = silent gulls.
 Config.SEAGULL_SOUND_ID = "rbxassetid://9118858002"
 
+-- Day / night (shared/DayNight + client/Sky). Real seconds; same sky on every server.
+-- Day = sunrise (06:00) to sunset (18:00), night = 18:00 to 06:00 (shorter, so phones are not dark long).
+-- STUDIO: Workspace attribute "TestClock" (0-24, e.g. 22 = night; 0 = normal cycle).
+Config.DAY_NIGHT = { daySeconds = 20 * 60, nightSeconds = 5 * 60 }
+
 -- Storm sounds (client/Weather). Paste Roblox audio ids from the Studio Toolbox (Creator Store ->
 -- Audio, search "thunder" / "rain loop"). Empty = silent (rain + lightning still show).
 Config.THUNDER_SOUND_ID = ""

@@ -374,6 +374,7 @@ end)
 local IS_STUDIO = game:GetService("RunService"):IsStudio()
 if IS_STUDIO then
 	workspace:SetAttribute("TestStorm", false)
+	workspace:SetAttribute("TestClock", 0) -- 0 = normal day/night cycle; e.g. 22 = night (client/Sky)
 end
 local stormOn = false
 local function updateWeather(now: number)

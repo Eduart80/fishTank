@@ -13,7 +13,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
 local Weather = {}
 
 local RAIN_HEIGHT = 45 -- rain cloud box sits this far above the camera
-local RAIN_AREA = 140 -- studs around the camera
+local RAIN_AREA = 90 -- studs around the camera (smaller = denser for the same drop count)
 local RAIN_RATE_PC = 900
 local RAIN_RATE_PHONE = 350
 
@@ -53,11 +53,11 @@ function Weather.start()
 	rain.Speed = NumberRange.new(80, 100)
 	rain.Lifetime = NumberRange.new(0.6, 0.8)
 	rain.Acceleration = Vector3.new(4, 0, 2) -- a bit of wind
-	rain.Size = NumberSequence.new(0.18)
-	rain.Squash = NumberSequence.new(3) -- positive = thinner and taller (flip the sign if drops look like flat discs)
-	rain.Color = ColorSequence.new(Color3.fromRGB(190, 205, 225))
-	rain.Transparency = NumberSequence.new(0.35)
-	rain.LightEmission = 0.1
+	rain.Size = NumberSequence.new(0.35)
+	rain.Squash = NumberSequence.new(-3) -- MEASURED: +3 drew sideways streaks; -3 stretches along the fall
+	rain.Color = ColorSequence.new(Color3.fromRGB(225, 235, 250))
+	rain.Transparency = NumberSequence.new(0.15)
+	rain.LightEmission = 0.4 -- a little glow so drops show against the dark storm sky
 	rain.LightInfluence = 1
 	rain.Rate = 0
 	rain.Enabled = true

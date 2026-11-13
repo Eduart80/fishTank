@@ -1,0 +1,38 @@
+-- Day / night on THIS client: moves Lighting.ClockTime (sun, moon, stars, shadows) from the
+-- shared server clock, and adds a local moonlight tint at night. Local only, so it never fights
+-- the server's storm look (which tweens Brightness / Ambient / Atmosphere for everyone).
+-- Updates twice a second: smooth enough, and cheaper than re-lighting every frame on phones.
+
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local DayNight = require(Shared:WaitForChild("DayNight"))
+
+local Sky = {}
+
+local NIGHT_TINT = Color3.fromRGB(150, 172, 235) -- moonlight blue
+local WHITE = Color3.new(1, 1, 1)
+
+function Sky.start()
+	local tint = Instance.new("ColorCorrectionEffect")
+	tint.Name = "NightTint"
+	tint.Parent = workspace.CurrentCamera
+
+	task.spawn(function()
+		while true do
+			local test = workspace:GetAttribute("TestClock")
+			local clock = if type(test) == "number" and test > 0 then test % 24 else DayNight.clockAt(workspace:GetServerTimeNow())
+			Lighting.ClockTime = clock
+			local d = DayNight.darkness(clock)
+			-- readable night: darker and bluer, never black (fish must stay visible)
+			tint.Brightness = -0.06 * d
+			tint.Contrast = 0.08 * d
+			tint.Saturation = -0.25 * d
+			tint.TintColor = WHITE:Lerp(NIGHT_TINT, d)
+			task.wait(0.5)
+		end
+	end)
+end
+
+return Sky
