@@ -26,8 +26,11 @@ function Sky.start()
 			Lighting.ClockTime = clock
 			local d = DayNight.darkness(clock)
 			-- readable night: darker and bluer, never black (fish must stay visible)
-			tint.Brightness = -0.13 * d -- was -0.06: sand looked like moonlit snow
-			tint.Contrast = 0.08 * d
+			-- storm already darkens the world (server look): at night during a storm we LIFT the
+			-- image a little instead of stacking a 3rd darkening (storm + night was nearly black)
+			local storm = workspace:GetAttribute("Weather") == "storm"
+			tint.Brightness = (if storm then 0.06 else -0.13) * d -- clear night -0.13 (user: sand was too bright at -0.06)
+			tint.Contrast = (if storm then -0.05 else 0.08) * d
 			tint.Saturation = -0.25 * d
 			tint.TintColor = WHITE:Lerp(NIGHT_TINT, d)
 			task.wait(0.5)
