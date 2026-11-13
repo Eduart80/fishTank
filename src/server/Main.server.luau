@@ -1,5 +1,5 @@
 -- Server entry point: remotes, player lifecycle, the 5-second game tick.
-print("[FishMarket] SERVER build 2026-11-13g dev panel") -- proves Studio runs the synced script
+print("[FishMarket] SERVER build 2026-11-13h server moon") -- proves Studio runs the synced script
 -- Rule: the client only ASKS. Every coin, fish and price is decided here.
 
 local Players = game:GetService("Players")
@@ -136,7 +136,7 @@ local function currentWeather(now: number)
 	local phase = (IS_STUDIO and type(testMoon) == "string" and DayNight.phaseByKey(testMoon)) or DayNight.moonPhase(now)
 	local dark = DayNight.darkness(clock)
 	-- night = Moonlit can happen: deep night under a FULL moon only
-	return { storm = storm, night = dark >= 0.8 and phase.key == "full", fullMoonRising = dark >= 0.5 and phase.key == "full" }
+	return { storm = storm, night = dark >= 0.8 and phase.key == "full", fullMoonRising = dark >= 0.5 and phase.key == "full", phase = phase }
 end
 
 local function settleAndNotify(player: Player, data, now: number)
@@ -544,6 +544,7 @@ local stormOn = false
 local fullMoonOn = false
 local function updateWeather(now: number)
 	local weather = currentWeather(now)
+	AmbienceService.setMoon(weather.phase)
 	if weather.fullMoonRising ~= fullMoonOn then
 		fullMoonOn = weather.fullMoonRising
 		if fullMoonOn then

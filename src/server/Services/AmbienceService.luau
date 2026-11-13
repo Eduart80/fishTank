@@ -5,6 +5,8 @@
 
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
 
 local AmbienceService = {}
 
@@ -110,6 +112,27 @@ function AmbienceService.setWeather(kind: string, seconds: number?)
 		end
 	end
 	workspace:SetAttribute("Weather", kind) -- clients: rain, lightning, gulls leave
+end
+
+-- Moon of tonight (phase entry from Config.MOON_PHASES). Set on the server so every player gets
+-- the same moon (client-side sky changes were not reliable). Only touches the sky when it changes.
+local shownMoon = nil
+function AmbienceService.setMoon(phase)
+	if phase.key == shownMoon then
+		return
+	end
+	shownMoon = phase.key
+	local sky = Lighting:FindFirstChildOfClass("Sky")
+	if not sky then
+		return
+	end
+	if phase.texture ~= "" then
+		sky.MoonTextureId = phase.texture
+		sky.MoonAngularSize = Config.MOON_SIZE
+	else
+		sky.MoonAngularSize = 0 -- new moon, or a phase picture not uploaded yet
+	end
+	print(("[Moon] %s -> size %d"):format(phase.key, sky.MoonAngularSize))
 end
 
 function AmbienceService.start()
