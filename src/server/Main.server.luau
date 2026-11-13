@@ -1,5 +1,5 @@
 -- Server entry point: remotes, player lifecycle, the 5-second game tick.
-print("[FishMarket] SERVER build 2026-11-13f market hall + hall of fame") -- proves Studio runs the synced script
+print("[FishMarket] SERVER build 2026-11-13g dev panel") -- proves Studio runs the synced script
 -- Rule: the client only ASKS. Every coin, fish and price is decided here.
 
 local Players = game:GetService("Players")
@@ -485,6 +485,21 @@ end)
 -- STUDIO ONLY: Workspace attribute "TestStorm" (tick it in Properties while playing, Server side)
 -- forces the storm on/off without waiting for the event.
 if IS_STUDIO then
+	-- DevCmd: the Studio-only test panel (client/DevPanel) sets these switches from the CLIENT view,
+	-- so you never have to switch to Server view (where your character can't move).
+	local ALLOWED = { TestStorm = "boolean", TestMutate = "boolean", TestMoon = "string", TestTop = "boolean", TestPasses = "boolean", TestFx = "string", TestClock = "number", SetSlots = "number" }
+	local devRemote = Instance.new("RemoteEvent")
+	devRemote.Name = "DevCmd"
+	devRemote.Parent = remotes
+	devRemote.OnServerEvent:Connect(function(_player, name, value)
+		if type(name) ~= "string" or ALLOWED[name] == nil or type(value) ~= ALLOWED[name] then
+			return
+		end
+		if name == "TestFx" then
+			workspace:SetAttribute(name, "") -- so the same effect can play again
+		end
+		workspace:SetAttribute(name, value)
+	end)
 	workspace:SetAttribute("TestStorm", false)
 	workspace:SetAttribute("TestMutate", false) -- true = every weather mutation roll succeeds
 	workspace:SetAttribute("TestMoon", "")
