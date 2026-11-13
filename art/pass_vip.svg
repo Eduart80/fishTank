@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd24a"/><stop offset="1" stop-color="#e09a10"/></linearGradient></defs><rect width="512" height="512" rx="90" fill="url(#bg)"/>
+  <path d="M96 340 L128 160 L200 250 L256 130 L312 250 L384 160 L416 340 Z" fill="#fff3c4" stroke="#8a5a00" stroke-width="12" stroke-linejoin="round"/>
+  <rect x="96" y="340" width="320" height="56" rx="12" fill="#fff3c4" stroke="#8a5a00" stroke-width="12"/>
+  <circle cx="256" cy="368" r="16" fill="#e0443e"/><circle cx="176" cy="368" r="12" fill="#3a8be0"/><circle cx="336" cy="368" r="12" fill="#3a8be0"/>
+  <text x="256" y="470" font-family="Arial Black,Arial" font-weight="900" font-size="84" text-anchor="middle" fill="#8a5a00">VIP</text></svg>

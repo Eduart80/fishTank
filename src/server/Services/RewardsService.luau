@@ -56,6 +56,10 @@ function RewardsService.claimDaily(data, now: number): string?
 	data.daily = { day = today, streak = streak }
 	local list = Config.DAILY_REWARDS
 	local reward = list[(streak - 1) % #list + 1]
+	if data.vip and reward.coins then
+		reward = table.clone(reward)
+		reward.coins *= 2 -- VIP pass: double daily coins
+	end
 	local got = grant(data, reward, now)
 	local nextReward = list[streak % #list + 1]
 	local head = if streak == 1 then "Daily reward!" else ("Day %d streak!"):format(streak)

@@ -60,6 +60,18 @@ local function pressureOf(id: string, channel: string, now: number): number
 	return MarketMath.decay(st.global, now - st.globalAt, halfLife(Config.ById[id], channel)) + st.pending
 end
 
+-- Weather Radio: start time of the next event with this id (e.g. "storm") within 72 h, or nil.
+-- Returns now if one is running. Server only (uses the secret schedule).
+function MarketService.nextEventStart(now: number, id: string): number?
+	for hour = now // 3600, now // 3600 + 72 do
+		local e = MarketMath.eventOfHour(hour, #Config.Species, EVENT_SECRET)
+		if e and e.def.id == id and e.endsAt > now then
+			return math.max(now, e.startsAt)
+		end
+	end
+	return nil
+end
+
 function MarketService.currentEvent(now: number)
 	return MarketMath.eventAt(now, #Config.Species, EVENT_SECRET)
 end

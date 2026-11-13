@@ -21,6 +21,7 @@ local AnalyticsTracker = require(Services.AnalyticsTracker)
 local PatioService = require(Services.PatioService)
 local PatioModels = require(Services.PatioModels)
 local RewardsService = require(Services.RewardsService)
+local ShopService = require(Services.ShopService)
 
 -- wait until Main has started the market (WorldService starts right after it)
 workspace:WaitForChild("FishWorld", 30)
@@ -418,6 +419,47 @@ test("Moon phases: one phase per night, all 8 in order, full moon every 8 nights
 		check(DayNight.moonPhase(t).key == phase.key, "night " .. i .. " is " .. DayNight.moonPhase(t).key)
 	end
 	check(DayNight.moonPhase(base + 8 * cycle).key == "new", "cycle does not repeat after 8 nights")
+end)
+
+-- Passes (Lucky Charm, VIP, Bigger Tank, Weather Radio) --------------------
+test("Lucky Charm: a roll just above the normal storm chance only mutates with the charm", function(check)
+	local roll = function() return Config.VARIANTS.storm.chance + 0.05 end
+	local d, fish = almostAdult(now)
+	TankService.settle(d, now + 5, { storm = true, night = false }, roll)
+	check(fish.variant == nil, "mutated without the charm")
+	local d2, fish2 = almostAdult(now)
+	d2.luckyCharm = true
+	TankService.settle(d2, now + 5, { storm = true, night = false }, roll)
+	check(fish2.variant == "storm", "charm did not help")
+end)
+
+test("Bigger Tank: +2 slots once, max slots +2", function(check)
+	local d = newPlayer(now)
+	d.bigTank = true
+	local fakePlayer = { SetAttribute = function() end }
+	ShopService.applyPassPerks(fakePlayer, d)
+	ShopService.applyPassPerks(fakePlayer, d)
+	check(d.slots == Config.STARTING_SLOTS + Config.BIG_TANK_SLOTS, "slots " .. d.slots)
+	check(Config.maxSlots(d) == Config.MAX_SLOTS + Config.BIG_TANK_SLOTS, "max not raised")
+end)
+
+test("VIP: daily reward coins are doubled", function(check)
+	local d = newPlayer(now)
+	d.vip = true
+	local c0 = d.coins
+	RewardsService.claimDaily(d, now)
+	check(d.coins == c0 + 2 * Config.DAILY_REWARDS[1].coins, "vip daily coins " .. (d.coins - c0))
+	check(Config.DAILY_REWARDS[1].coins == 25, "the shared reward table was changed")
+end)
+
+test("Weather Radio: next full moon is a full-moon night in the future (or now)", function(check)
+	local DayNight = require(ReplicatedStorage.Shared.DayNight)
+	local t = DayNight.nextFullMoon(now)
+	check(t >= now, "full moon in the past")
+	check(DayNight.moonPhase(t).key == "full", "not a full moon: " .. DayNight.moonPhase(t).key)
+	local MarketService = require(Services.MarketService)
+	local storm = MarketService.nextEventStart(now, "storm")
+	check(storm == nil or (storm >= now and MarketService.currentEvent(storm + 1).def.id == "storm"), "storm forecast wrong")
 end)
 
 -- First-session fast growth -------------------------------------------------

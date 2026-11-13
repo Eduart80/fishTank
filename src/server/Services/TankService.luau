@@ -62,7 +62,8 @@ function TankService.settle(data, now: number, weather, roll: (() -> number)?)
 		if weather and ageBefore < 1 and fish.age >= 1 and not fish.variant and step <= Config.VARIANT_MAX_STEP then
 			local kind = if weather.storm then "storm" elseif weather.night then "moon" else nil
 			local v = kind and Config.VARIANTS[kind]
-			if v and (if roll then roll() else variantRng:NextNumber()) < v.chance then
+			local chance = if v then v.chance + (if data.luckyCharm then Config.LUCKY_CHARM_BONUS else 0) else 0
+			if v and (if roll then roll() else variantRng:NextNumber()) < chance then
 				fish.variant = kind
 				table.insert(mutated, fish)
 			end
@@ -376,7 +377,7 @@ function TankService.rescueIfBroke(data, now: number): boolean
 end
 
 function TankService.buySlot(data)
-	if data.slots >= Config.MAX_SLOTS then
+	if data.slots >= Config.maxSlots(data) then
 		return false, "Tank is already max size"
 	end
 	local cost = Config.slotCost(data.slots)
@@ -416,7 +417,7 @@ function TankService.publicState(data, now: number)
 		now = now,
 		coins = data.coins,
 		slots = data.slots,
-		maxSlots = Config.MAX_SLOTS,
+		maxSlots = Config.maxSlots(data),
 		slotCost = Config.slotCost(data.slots),
 		fedUntil = data.fedUntil,
 		feedCost = math.ceil(perHour * missingHours),
@@ -426,6 +427,10 @@ function TankService.publicState(data, now: number)
 		boostUntil = data.boostUntil or 0,
 		incubator = if data.incubator then #data.incubator else 0,
 		starterPack = data.starterPack == true,
+		luckyCharm = data.luckyCharm == true,
+		vip = data.vip == true,
+		bigTank = data.bigTank == true,
+		weatherRadio = data.weatherRadio == true,
 	}
 end
 

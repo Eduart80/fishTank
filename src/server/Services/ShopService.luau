@@ -37,6 +37,17 @@ end
 
 local onChanged = function(_player: Player, _msg: string?, _fx: string?) end
 
+-- One-time / visible pass perks, applied after ownership is known (join or purchase).
+--   Bigger Tank: +2 slots, given once (data.bigTankGiven).  VIP: player attribute for the tag.
+local function applyPassPerks(player: Player, data)
+	if data.bigTank and not data.bigTankGiven then
+		data.bigTankGiven = true
+		data.slots += Config.BIG_TANK_SLOTS
+	end
+	player:SetAttribute("VIP", data.vip == true)
+end
+ShopService.applyPassPerks = applyPassPerks
+
 -- Checks Game Pass ownership with Roblox and stores it on the data (e.g. data.autoFeeder). Yields.
 function ShopService.refreshPasses(player: Player, data)
 	for id, item in byPassId do
@@ -47,6 +58,7 @@ function ShopService.refreshPasses(player: Player, data)
 			warn("[Shop] pass check failed:", owns) -- keep the saved value
 		end
 	end
+	applyPassPerks(player, data)
 end
 
 local function grantProduct(item, data, now: number)
@@ -160,6 +172,7 @@ function ShopService.start(opts)
 		local data = DataService.get(player)
 		if purchased and item and data then
 			data[item.key] = true
+			applyPassPerks(player, data)
 			onChanged(player, item.name .. " is yours. Thank you!")
 		end
 	end)

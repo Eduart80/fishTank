@@ -1,7 +1,7 @@
 -- Client UI. Shows what the server sends and asks the server to act. It never decides anything.
 -- v1 is UI-only (no 3D tank yet) so we can test whether the market loop is fun.
 
-print("[FishMarket] client build 2026-11-13d moon phases") -- proves Studio runs the synced script
+print("[FishMarket] client build 2026-11-13e passes + top 100") -- proves Studio runs the synced script
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -157,12 +157,28 @@ local streakLabel = make("TextLabel", {
 	Parent = topGui,
 }, { make("UICorner", { CornerRadius = UDim.new(1, 0) }), make("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }) })
 
+-- Weather Radio pass: forecast badge under the streak badge
+local forecastLabel = make("TextLabel", {
+	BackgroundColor3 = Color3.new(0, 0, 0),
+	BackgroundTransparency = 0.3,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -12, 0, 96),
+	Size = UDim2.new(0, 0, 0, 28),
+	AutomaticSize = Enum.AutomaticSize.X,
+	Font = FONT_BOLD,
+	TextSize = 15,
+	TextColor3 = Color3.fromRGB(170, 215, 255),
+	Text = "",
+	Visible = false,
+	Parent = topGui,
+}, { make("UICorner", { CornerRadius = UDim.new(1, 0) }), make("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }) })
+
 -- Food status lives on each tank's front glass (see renderFoodGauges); feed at the tank with F.
 
 -- Market / My Tank: round icon buttons, middle of the left side
 -- One column holds all icons, so a single UIScale shrinks buttons AND the gaps between them.
 local ICON_GAP = 14
-local iconColumn = make("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), Size = UDim2.new(0, 68, 0, 4 * 86 + 3 * ICON_GAP), Parent = gui }, {
+local iconColumn = make("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), Size = UDim2.new(0, 68, 0, 5 * 86 + 4 * ICON_GAP), Parent = gui }, {
 	make("UIListLayout", { Padding = UDim.new(0, ICON_GAP), SortOrder = Enum.SortOrder.LayoutOrder }),
 })
 local iconColumnScale = make("UIScale", { Parent = iconColumn })
@@ -189,6 +205,8 @@ local shopToggle = iconButton("R$", "Shop", 100)
 shopToggle.BackgroundColor3 = Color3.fromRGB(40, 160, 90)
 -- Invite: Roblox friend-invite prompt. The inviter id goes into LaunchData (server also reads
 -- ReferredByPlayerId); a brand-new friend who joins gets a gift, the inviter gets coins.
+local topToggle = iconButton("🏆", "Top", 150)
+topToggle.BackgroundColor3 = Color3.fromRGB(200, 150, 30)
 local inviteToggle = iconButton("👥", "Invite", 200)
 inviteToggle.BackgroundColor3 = Color3.fromRGB(230, 140, 40)
 inviteToggle.Activated:Connect(function()
@@ -245,6 +263,8 @@ marketFrame.BackgroundTransparency = GLASS_WINDOW
 tankFrame.BackgroundTransparency = GLASS_WINDOW
 local shopFrame, _, shopList = panel(0, 96, "Robux Shop")
 local storeFrame, storeTitle, storeList = panel(0, 96, "Harbor Store")
+local topFrame, _, topList = panel(0, 96, "🏆 Top 100 Fish Tycoons")
+topFrame.Visible = false
 -- store header: title | Store | My items | R$ Shop tabs, then a hint line, then the list
 storeTitle.Size = UDim2.new(0.4, -12, 0, 28)
 local storeTabAll = button({ Text = "Store", Position = UDim2.new(0.4, 0, 0, 6), Size = UDim2.new(0.2, -4, 0, 28), Parent = storeFrame })
@@ -326,7 +346,7 @@ end)
 -- Small screens (phones): windows go full width and only one is open at a time.
 -- Big screens: Market/Shop on the left half, Tank on the right half, both can be open.
 local SMALL_SCREEN_WIDTH = 900
-local allPanels = { marketFrame, shopFrame, tankFrame, storeFrame }
+local allPanels = { marketFrame, shopFrame, tankFrame, storeFrame, topFrame }
 
 -- Phone = touch screen that is wide (sideways phone ~2:1; tablets are ~4:3) or just short.
 -- Pixel width alone fails: high-res phones (Samsung) report PC-sized viewports.
@@ -377,6 +397,8 @@ local function layoutPanels()
 		shopFrame.Size = UDim2.new(0.47, -left, 1, -76)
 		storeFrame.Position = UDim2.new(0, left, 0, 64)
 		storeFrame.Size = UDim2.new(0.47, -left, 1, -76)
+		topFrame.Position = UDim2.new(0, left, 0, 64)
+		topFrame.Size = UDim2.new(0.47, -left, 1, -76)
 		tankFrame.Position = UDim2.new(0.51, 0, 0, 64)
 		tankFrame.Size = UDim2.new(0.47, 0, 1, -76)
 	end
@@ -402,6 +424,9 @@ shopToggle.Activated:Connect(function()
 end)
 tankToggle.Activated:Connect(function()
 	setPanel(tankFrame, not tankFrame.Visible)
+end)
+topToggle.Activated:Connect(function()
+	setPanel(topFrame, not topFrame.Visible)
 end)
 
 layoutPanels()
@@ -553,6 +578,17 @@ local function renderTank()
 	coinsLabel.Text = fmt(tank.coins)
 	streakLabel.Visible = (tank.streak or 0) > 0
 	streakLabel.Text = ("🔥 Day %d streak"):format(tank.streak or 0)
+	local forecast = tank.forecast
+	forecastLabel.Visible = forecast ~= nil
+	if forecast then
+		local function when(t)
+			if not t then
+				return "none soon"
+			end
+			return if t <= now + 1 then "NOW" else "in " .. fmtTime(t - now)
+		end
+		forecastLabel.Text = ("📻 Storm %s · 🌕 Full moon %s"):format(when(forecast.storm), when(forecast.fullMoon))
+	end
 
 
 	tankTitle.Text = ("%s %d/%d"):format(Config.TANK_STAGES[Config.tankStage(tank.slots)].name, #tank.fish, tank.slots)
@@ -890,6 +926,41 @@ Remotes:WaitForChild("Market").OnClientEvent:Connect(function(payload)
 	renderMarket()
 	renderTank()
 end)
+
+-- Top 100 panel: rebuilt when the server sends a new list (every ~2 min)
+Remotes:WaitForChild("Top").OnClientEvent:Connect(function(list)
+	for _, child in topList:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+	if type(list) ~= "table" or #list == 0 then
+		label({ Text = "No one yet. Sell fish to get on the board!", TextColor3 = C.dim, Size = UDim2.new(1, -6, 0, 30), Parent = topList })
+		return
+	end
+	for _, e in list do
+		local mine = e.userId == player.UserId
+		local row = make("Frame", { LayoutOrder = e.rank, BackgroundColor3 = if mine then Color3.fromRGB(60, 90, 40) else C.row, BackgroundTransparency = GLASS_CARD, Size = UDim2.new(1, -6, 0, 30), Parent = topList }, { corner(6) })
+		local color = if e.rank == 1 then Color3.fromRGB(255, 215, 80) elseif e.rank == 2 then Color3.fromRGB(215, 220, 230) elseif e.rank == 3 then Color3.fromRGB(225, 160, 100) else C.text
+		label({ Font = FONT_BOLD, Text = ("%d. %s"):format(e.rank, tostring(e.name)), TextColor3 = color, Position = UDim2.new(0, 10, 0, 4), Size = UDim2.new(0.6, -10, 1, -8), Parent = row })
+		label({ Font = FONT_BOLD, Text = "$" .. fmt(e.score), TextColor3 = color, TextXAlignment = Enum.TextXAlignment.Right, Position = UDim2.new(0.6, 0, 0, 4), Size = UDim2.new(0.4, -10, 1, -8), Parent = row })
+	end
+end)
+
+-- VIP pass: [VIP] in front of their chat messages (the server sets the VIP player attribute)
+do
+	local TextChatService = game:GetService("TextChatService")
+	TextChatService.OnIncomingMessage = function(message)
+		local source = message.TextSource
+		local sender = source and Players:GetPlayerByUserId(source.UserId)
+		if sender and sender:GetAttribute("VIP") == true then
+			local props = Instance.new("TextChatMessageProperties")
+			props.PrefixText = "<font color=\"#FFD24A\">[VIP]</font> " .. message.PrefixText
+			return props
+		end
+		return nil
+	end
+end
 
 Remotes:WaitForChild("Notify").OnClientEvent:Connect(function(text, seconds)
 	showToast(text, seconds)

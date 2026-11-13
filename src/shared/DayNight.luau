@@ -35,6 +35,19 @@ function DayNight.moonPhase(t: number)
 	return phases[(t // cycle) % #phases + 1]
 end
 
+-- Weather Radio: start of the next full-moon night (now if it is one right now).
+function DayNight.nextFullMoon(now: number): number
+	local day, night = Config.DAY_NIGHT.daySeconds, Config.DAY_NIGHT.nightSeconds
+	local cycle = day + night
+	for k = now // cycle, now // cycle + #Config.MOON_PHASES do
+		local nightStart = k * cycle + day
+		if Config.MOON_PHASES[k % #Config.MOON_PHASES + 1].key == "full" and nightStart + night > now then
+			return math.max(now, nightStart)
+		end
+	end
+	return now
+end
+
 function DayNight.phaseByKey(key: string)
 	for _, phase in Config.MOON_PHASES do
 		if phase.key == key then

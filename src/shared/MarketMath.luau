@@ -61,8 +61,8 @@ end
 -- Returns the active event at time t, or nil. Deterministic per hour, so all servers agree.
 -- The server passes a secret: clients can read this file but not the secret, so they can't
 -- work out future events.
-function MarketMath.eventAt(t: number, speciesCount: number, secret: number?)
-	local hour = t // 3600
+-- The event planned for one hour (or nil), whether it is running yet or not.
+function MarketMath.eventOfHour(hour: number, speciesCount: number, secret: number?)
 	local rng = Random.new(hour * 7919 + 17 + (secret or 0))
 	if rng:NextNumber() > MarketMath.EVENT_CHANCE then
 		return nil
@@ -70,13 +70,23 @@ function MarketMath.eventAt(t: number, speciesCount: number, secret: number?)
 	local def = MarketMath.EVENTS[rng:NextInteger(1, #MarketMath.EVENTS)]
 	local speciesIndex = rng:NextInteger(1, speciesCount)
 	local startsAt = hour * 3600 + rng:NextInteger(0, 40) * 60
-	local endsAt = startsAt + MarketMath.EVENT_DURATION
-	if t < startsAt or t >= endsAt then
-		return nil
-	end
 	return {
 		def = def,
 		speciesIndex = if def.scope == "one" then speciesIndex else nil,
+		startsAt = startsAt,
+		endsAt = startsAt + MarketMath.EVENT_DURATION,
+	}
+end
+
+function MarketMath.eventAt(t: number, speciesCount: number, secret: number?)
+	local planned = MarketMath.eventOfHour(t // 3600, speciesCount, secret)
+	if not planned or t < planned.startsAt or t >= planned.endsAt then
+		return nil
+	end
+	local def, speciesIndex, startsAt, endsAt = planned.def, planned.speciesIndex, planned.startsAt, planned.endsAt
+	return {
+		def = def,
+		speciesIndex = speciesIndex,
 		startsAt = startsAt,
 		endsAt = endsAt,
 	}

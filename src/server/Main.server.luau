@@ -1,5 +1,5 @@
 -- Server entry point: remotes, player lifecycle, the 5-second game tick.
-print("[FishMarket] SERVER build 2026-11-13d moon phases") -- proves Studio runs the synced script
+print("[FishMarket] SERVER build 2026-11-13e passes + top 100") -- proves Studio runs the synced script
 -- Rule: the client only ASKS. Every coin, fish and price is decided here.
 
 local Players = game:GetService("Players")
@@ -20,6 +20,7 @@ local AmbienceService = require(Services.AmbienceService)
 local PatioService = require(Services.PatioService)
 local RewardsService = require(Services.RewardsService)
 local FerryService = require(Services.FerryService)
+local LeaderboardService = require(Services.LeaderboardService)
 
 local TICK = 5
 local ACTION_COOLDOWN = 0.15
@@ -43,6 +44,9 @@ notifyRemote.Parent = remotes
 local fxRemote = Instance.new("RemoteEvent") -- big visual moments everyone sees (lightning on a tank...)
 fxRemote.Name = "Fx"
 fxRemote.Parent = remotes
+local topRemote = Instance.new("RemoteEvent") -- Top 100 list for the Top panel
+topRemote.Name = "Top"
+topRemote.Parent = remotes
 local ferryRemote = Instance.new("RemoteEvent")
 ferryRemote.Name = "Ferry"
 ferryRemote.Parent = remotes
@@ -52,6 +56,12 @@ MarketService.start()
 DataService.start()
 WorldService.start()
 AmbienceService.start()
+LeaderboardService.start(workspace:WaitForChild("FishWorld"), {
+	remote = topRemote,
+	getData = function(player)
+		return DataService.get(player)
+	end,
+})
 FerryService.start(workspace:WaitForChild("FishWorld"), {
 	remote = ferryRemote,
 	getData = function(player)
@@ -77,6 +87,10 @@ local function pushState(player: Player, data, now: number)
 	local patio = PatioService.publicState(data)
 	state.inventory, state.patio = patio.inventory, patio.patio
 	state.streak = if data.daily then data.daily.streak else 0
+	-- Weather Radio pass: when the next storm / full moon comes (server-only storm schedule)
+	if data.weatherRadio then
+		state.forecast = { storm = MarketService.nextEventStart(now, "storm"), fullMoon = DayNight.nextFullMoon(now) }
+	end
 	stateRemote:FireClient(player, state)
 	WorldService.updateFeedPrompt(player, state)
 	WorldService.updateTankStage(player, data.slots)
@@ -332,6 +346,55 @@ local function handleInvite(player: Player, data, now: number): string?
 	return inviteeText
 end
 
+-- VIP name tag (pass): gold "VIP" + name above the head, follows respawns ---------
+local function vipTag(player: Player)
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local existing = head:FindFirstChild("VipTag")
+	if player:GetAttribute("VIP") ~= true then
+		if existing then
+			existing:Destroy()
+		end
+		return
+	end
+	if existing then
+		return
+	end
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "VipTag"
+	gui.Size = UDim2.fromOffset(160, 26)
+	gui.StudsOffset = Vector3.new(0, 3.2, 0)
+	gui.AlwaysOnTop = false
+	gui.MaxDistance = 80
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(255, 210, 74)
+	label.TextStrokeTransparency = 0.3
+	label.Text = "👑 VIP " .. player.DisplayName
+	label.Parent = gui
+	gui.Parent = head
+end
+local function hookVip(player: Player)
+	player.CharacterAdded:Connect(function(character)
+		character:WaitForChild("Head", 5)
+		vipTag(player)
+	end)
+	player:GetAttributeChangedSignal("VIP"):Connect(function()
+		vipTag(player)
+	end)
+	vipTag(player)
+end
+Players.PlayerAdded:Connect(hookVip)
+for _, player in Players:GetPlayers() do
+	hookVip(player)
+end
+
 -- Player lifecycle --------------------------------------------------------
 local function onPlayerAdded(player: Player)
 	local data = DataService.load(player)
@@ -415,7 +478,24 @@ end)
 if IS_STUDIO then
 	workspace:SetAttribute("TestStorm", false)
 	workspace:SetAttribute("TestMutate", false) -- true = every weather mutation roll succeeds
-	workspace:SetAttribute("TestMoon", "") -- e.g. full / new / half_waxing: force the moon phase (client/Sky + Moonlit)
+	workspace:SetAttribute("TestMoon", "")
+	-- TestPasses: true = the first player gets all 4 new passes (Lucky Charm, VIP, Bigger Tank,
+	-- Weather Radio) in Studio without buying them; false = takes them away again (slots stay)
+	workspace:SetAttribute("TestPasses", false)
+	workspace:GetAttributeChangedSignal("TestPasses"):Connect(function()
+		local player = Players:GetPlayers()[1]
+		local data = player and DataService.get(player)
+		if not data then
+			return
+		end
+		local on = workspace:GetAttribute("TestPasses") == true
+		for _, key in { "luckyCharm", "vip", "bigTank", "weatherRadio" } do
+			data[key] = on
+		end
+		ShopService.applyPassPerks(player, data)
+		pushState(player, data, os.time())
+		print("[TestPasses]", on)
+	end) -- e.g. full / new / half_waxing: force the moon phase (client/Sky + Moonlit)
 	-- TestFx: type storm / moon / rare -> that effect plays on the first player's tank right away
 	workspace:SetAttribute("TestFx", "")
 	workspace:GetAttributeChangedSignal("TestFx"):Connect(function()
