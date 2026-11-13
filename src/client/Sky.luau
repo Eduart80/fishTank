@@ -26,7 +26,7 @@ function Sky.start()
 			Lighting.ClockTime = clock
 			local d = DayNight.darkness(clock)
 			-- readable night: darker and bluer, never black (fish must stay visible)
-			tint.Brightness = -0.06 * d
+			tint.Brightness = -0.13 * d -- was -0.06: sand looked like moonlit snow
 			tint.Contrast = 0.08 * d
 			tint.Saturation = -0.25 * d
 			tint.TintColor = WHITE:Lerp(NIGHT_TINT, d)
