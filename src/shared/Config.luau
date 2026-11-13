@@ -117,6 +117,8 @@ Config.VARIANTS = {
 	golden = { name = "Golden", icon = "✨", mult = 3, color = Color3.fromRGB(255, 200, 60) },
 }
 -- Rare Egg (Robux developer product): a species the player has unlocked, always a rare variant.
+-- Only CHEAP species (decided 2026-11-13): a collector fish, never a paid shortcut to Koi money.
+Config.RARE_EGG_SPECIES = { guppy = true, clownfish = true, salmon = true }
 Config.RARE_EGG_ODDS = {
 	{ variant = "albino", weight = 75 },
 	{ variant = "golden", weight = 25 },
@@ -162,7 +164,7 @@ Config.ROBUX = {
 	-- once = one per player (hidden as Owned after). Contents are granted by server/ShopService.
 	{ key = "starterPack", kind = "product", id = 3730113426, once = true, name = "Starter Pack", text = "500 coins + Beach Umbrella + a Clownfish egg. One per player!", coins = 500, item = "umbrella", egg = "clownfish" },
 	{ key = "autoFeeder", kind = "pass", id = 2076124464, name = "Auto-Feeder", text = "Your fish never go hungry, even offline: they keep growing and never starve." },
-	{ key = "rareEgg", kind = "product", id = 3730899968, name = "Rare Egg", text = "A mystery egg of a fish you have unlocked. Always hatches Albino (2x) or Golden (3x)!" },
+	{ key = "rareEgg", kind = "product", id = 3730899968, name = "Rare Egg", text = "A mystery Guppy, Clownfish or Salmon egg (ones you have unlocked). Always hatches Albino (2x) or Golden (3x)!" },
 	{ key = "growBoost", kind = "product", id = 3729887473, name = "Grow Boost (1 hour)", text = "All your fish grow 2x faster for 1 hour. Buy again to add time.", seconds = 3600 },
 }
 

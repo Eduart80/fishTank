@@ -208,11 +208,11 @@ function TankService.rollRareEgg(data, rng: Random?): (string, string)
 	local r = rng or Random.new()
 	local unlocked = {}
 	for _, species in Config.Species do
-		if data.stats.earned >= (species.unlockEarned or 0) then
+		if Config.RARE_EGG_SPECIES[species.id] and data.stats.earned >= (species.unlockEarned or 0) then
 			table.insert(unlocked, species.id)
 		end
 	end
-	local speciesId = unlocked[r:NextInteger(1, #unlocked)]
+	local speciesId = unlocked[r:NextInteger(1, #unlocked)] -- Guppy is always unlocked
 	local total = 0
 	for _, odd in Config.RARE_EGG_ODDS do
 		total += odd.weight

@@ -384,6 +384,19 @@ test("Rare Egg: only unlocked species, always a rare variant", function(check)
 	end
 end)
 
+test("Rare Egg: a Koi-level player still only rolls cheap species", function(check)
+	local d = newPlayer(now)
+	d.stats.earned = 1000000
+	local rng = Random.new(3)
+	local seen = {}
+	for _ = 1, 200 do
+		local speciesId = TankService.rollRareEgg(d, rng)
+		seen[speciesId] = true
+		check(Config.RARE_EGG_SPECIES[speciesId] == true, "expensive species rolled: " .. speciesId)
+	end
+	check(seen.guppy and seen.clownfish and seen.salmon, "not all cheap species reachable")
+end)
+
 test("Incubator: waits while the tank is full, hatches when a slot frees", function(check)
 	local d = newPlayer(now)
 	for _ = 1, d.slots do
