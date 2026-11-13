@@ -366,7 +366,7 @@ local function vipTag(player: Player)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "VipTag"
 	gui.Size = UDim2.fromOffset(160, 26)
-	gui.StudsOffset = Vector3.new(0, 3.2, 0)
+	gui.StudsOffset = Vector3.new(0, 2.3, 0) -- just above the head (3.2 looked like part of the Hall of Fame board)
 	gui.AlwaysOnTop = false
 	gui.MaxDistance = 80
 	local label = Instance.new("TextLabel")
@@ -481,6 +481,13 @@ if IS_STUDIO then
 	workspace:SetAttribute("TestMoon", "")
 	-- TestPasses: true = the first player gets all 4 new passes (Lucky Charm, VIP, Bigger Tank,
 	-- Weather Radio) in Studio without buying them; false = takes them away again (slots stay)
+	-- TestTop: true = Hall of Fame + Top panel filled with 100 sample players (false = real again)
+	workspace:SetAttribute("TestTop", false)
+	workspace:GetAttributeChangedSignal("TestTop"):Connect(function()
+		LeaderboardService.setTest(workspace:GetAttribute("TestTop") == true, function(player)
+			return DataService.get(player)
+		end)
+	end)
 	workspace:SetAttribute("TestPasses", false)
 	workspace:GetAttributeChangedSignal("TestPasses"):Connect(function()
 		local player = Players:GetPlayers()[1]

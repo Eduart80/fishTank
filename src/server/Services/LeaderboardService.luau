@@ -25,6 +25,8 @@ local names = {} -- [userId] = username cache
 local top = {} -- { { rank, userId, name, score } }
 
 local boardRows = {} -- TextLabels on the plaza board
+local fakeTop = false -- STUDIO: TestTop fills the board with 100 sample players
+local remoteRef = nil
 
 local function nameOf(userId: number): string
 	if names[userId] then
@@ -70,6 +72,14 @@ local function submit(getData)
 end
 
 local function refresh(getData)
+	if fakeTop then
+		local list = {}
+		for i = 1, TOP do
+			table.insert(list, { rank = i, userId = -i, name = ("Tester%d"):format(i), score = math.floor(250000 / i ^ 0.8) })
+		end
+		top = list
+		return
+	end
 	local entries = {}
 	if store then
 		local ok, pages = pcall(store.GetSortedAsync, store, false, TOP)
@@ -118,8 +128,16 @@ end
 local function renderBoard()
 	for _, row in boardRows do
 		local e = top[row.index]
-		row.name.Text = if e then ("%d. %s"):format(e.rank, e.name) else ""
-		row.score.Text = if e then "$" .. fmt(e.score) else ""
+		if e then
+			row.name.Text = ("%d. %s"):format(e.rank, e.name)
+			row.score.Text = "$" .. fmt(e.score)
+		elseif #top == 0 and row.index == 2 then
+			row.name.Text = "Be the first! Sell fish to get your name here."
+			row.score.Text = ""
+		else
+			row.name.Text = if #top > 0 then ("%d. ---"):format(row.index) else ""
+			row.score.Text = ""
+		end
 	end
 end
 
@@ -189,6 +207,16 @@ local function buildBoard(parent: Instance)
 	model.Parent = parent
 end
 
+-- STUDIO ONLY: fill / clear the board with 100 sample players right away
+function LeaderboardService.setTest(on: boolean, getData)
+	fakeTop = on
+	refresh(getData)
+	renderBoard()
+	if remoteRef then
+		remoteRef:FireAllClients(top)
+	end
+end
+
 -- deps = { getData: (Player) -> data?, remote: RemoteEvent }
 function LeaderboardService.start(parent: Instance, deps)
 	local ok, result = pcall(DataStoreService.GetOrderedDataStore, DataStoreService, STORE_NAME)
@@ -198,6 +226,8 @@ function LeaderboardService.start(parent: Instance, deps)
 		warn("[Leaderboard] no DataStore access (Studio: Game Settings -> Security -> API services). Showing this server only.")
 	end
 	buildBoard(parent)
+	remoteRef = deps.remote
+	renderBoard() -- shows "Be the first!" until the first refresh
 
 	Players.PlayerAdded:Connect(function(player)
 		task.wait(5) -- after their data has loaded
