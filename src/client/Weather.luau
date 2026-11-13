@@ -115,14 +115,14 @@ function Weather.start()
 			flash.Brightness = 0.3
 			TweenService:Create(flash, TweenInfo.new(0.4), { Brightness = 0 }):Play()
 		end)
-		-- sound by distance: close = loud crack right away; far = distant rumble a bit later
-		-- (light is faster than sound). No far sound set = the crack, quieter and deeper.
-		local sound = if close then thunderSound else (farThunderSound or thunderSound)
+		-- sky bolts always use the distant rumble (the sharp crack is only for lightning hitting a
+		-- tank, see TankFx). Close bolts: louder and sooner; far bolts: quieter and later.
+		local sound = farThunderSound or thunderSound
 		if sound then
-			local delay = if close then 0.1 + math.random() * 0.3 else 1.5 + math.random() * 1.5
-			local deepened = not close and sound == thunderSound
+			local delay = if close then 0.4 + math.random() * 0.4 else 1.5 + math.random() * 1.5
+			local deepened = sound == thunderSound -- no rumble set: crack played deeper instead
 			task.delay(delay, function()
-				sound.Volume = if close then 1 elseif deepened then 0.35 else 0.7
+				sound.Volume = if close then 1 else 0.6
 				sound.PlaybackSpeed = if deepened then 0.65 + math.random() * 0.1 else 0.95 + math.random() * 0.1
 				sound:Play()
 			end)
