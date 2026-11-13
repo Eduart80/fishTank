@@ -27,4 +27,21 @@ function DayNight.darkness(clock: number): number
 	return 1
 end
 
+-- Moon phase of the night that belongs to time t (the night at the end of each day/night cycle).
+-- Returns the Config.MOON_PHASES entry. Same on every server.
+function DayNight.moonPhase(t: number)
+	local cycle = Config.DAY_NIGHT.daySeconds + Config.DAY_NIGHT.nightSeconds
+	local phases = Config.MOON_PHASES
+	return phases[(t // cycle) % #phases + 1]
+end
+
+function DayNight.phaseByKey(key: string)
+	for _, phase in Config.MOON_PHASES do
+		if phase.key == key then
+			return phase
+		end
+	end
+	return nil
+end
+
 return DayNight

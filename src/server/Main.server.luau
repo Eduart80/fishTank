@@ -1,5 +1,5 @@
 -- Server entry point: remotes, player lifecycle, the 5-second game tick.
-print("[FishMarket] SERVER build 2026-11-13c TestFx") -- proves Studio runs the synced script
+print("[FishMarket] SERVER build 2026-11-13d moon phases") -- proves Studio runs the synced script
 -- Rule: the client only ASKS. Every coin, fish and price is decided here.
 
 local Players = game:GetService("Players")
@@ -117,7 +117,11 @@ local function currentWeather(now: number)
 	local storm = (event ~= nil and event.def.id == "storm") or (IS_STUDIO and workspace:GetAttribute("TestStorm") == true)
 	local test = workspace:GetAttribute("TestClock")
 	local clock = if IS_STUDIO and type(test) == "number" and test > 0 then test % 24 else DayNight.clockAt(now)
-	return { storm = storm, night = DayNight.darkness(clock) >= 0.8 }
+	local testMoon = workspace:GetAttribute("TestMoon")
+	local phase = (IS_STUDIO and type(testMoon) == "string" and DayNight.phaseByKey(testMoon)) or DayNight.moonPhase(now)
+	local dark = DayNight.darkness(clock)
+	-- night = Moonlit can happen: deep night under a FULL moon only
+	return { storm = storm, night = dark >= 0.8 and phase.key == "full", fullMoonRising = dark >= 0.5 and phase.key == "full" }
 end
 
 local function settleAndNotify(player: Player, data, now: number)
@@ -411,6 +415,7 @@ end)
 if IS_STUDIO then
 	workspace:SetAttribute("TestStorm", false)
 	workspace:SetAttribute("TestMutate", false) -- true = every weather mutation roll succeeds
+	workspace:SetAttribute("TestMoon", "") -- e.g. full / new / half_waxing: force the moon phase (client/Sky + Moonlit)
 	-- TestFx: type storm / moon / rare -> that effect plays on the first player's tank right away
 	workspace:SetAttribute("TestFx", "")
 	workspace:GetAttributeChangedSignal("TestFx"):Connect(function()
@@ -425,8 +430,16 @@ if IS_STUDIO then
 	workspace:SetAttribute("TestClock", 0) -- 0 = normal day/night cycle; e.g. 22 = night (client/Sky)
 end
 local stormOn = false
+local fullMoonOn = false
 local function updateWeather(now: number)
-	local storm = currentWeather(now).storm
+	local weather = currentWeather(now)
+	if weather.fullMoonRising ~= fullMoonOn then
+		fullMoonOn = weather.fullMoonRising
+		if fullMoonOn then
+			notifyRemote:FireAllClients("🌕 Full Moon tonight! Fish that grow up under it can turn Moonlit (1.5x)!", 7)
+		end
+	end
+	local storm = weather.storm
 	if storm == stormOn then
 		return
 	end

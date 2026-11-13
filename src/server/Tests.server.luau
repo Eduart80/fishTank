@@ -409,6 +409,17 @@ test("Incubator: waits while the tank is full, hatches when a slot frees", funct
 	check(#placed == 1 and placed[1].variant == "golden" and #d.incubator == 0, "did not hatch into the free slot")
 end)
 
+test("Moon phases: one phase per night, all 8 in order, full moon every 8 nights", function(check)
+	local DayNight = require(ReplicatedStorage.Shared.DayNight)
+	local cycle = Config.DAY_NIGHT.daySeconds + Config.DAY_NIGHT.nightSeconds
+	local base = (now // (cycle * 8)) * cycle * 8 -- start of a phase cycle
+	for i, phase in Config.MOON_PHASES do
+		local t = base + (i - 1) * cycle + Config.DAY_NIGHT.daySeconds + 10 -- 10 s into that night
+		check(DayNight.moonPhase(t).key == phase.key, "night " .. i .. " is " .. DayNight.moonPhase(t).key)
+	end
+	check(DayNight.moonPhase(base + 8 * cycle).key == "new", "cycle does not repeat after 8 nights")
+end)
+
 -- First-session fast growth -------------------------------------------------
 test("Starter eggs grow fast until adult; after STARTER_SALES sales eggs are normal", function(check)
 	local d = newPlayer(now)

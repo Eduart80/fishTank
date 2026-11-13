@@ -8,6 +8,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DayNight = require(Shared:WaitForChild("DayNight"))
+local RunService = game:GetService("RunService")
+local IS_STUDIO = RunService:IsStudio()
 
 local Sky = {}
 
@@ -35,6 +37,19 @@ function Sky.start()
 			tint.TintColor = WHITE:Lerp(NIGHT_TINT, d)
 			-- clear nights: thin the clouds so the moon + stars show (storms keep their thick
 			-- clouds; the server replicates those and we leave them alone)
+			-- moon phase of tonight (8-night cycle). A phase without an uploaded texture (or the new
+			-- moon) shows no moon at all, so a non-full night never shows the full moon by mistake.
+			local testMoon = workspace:GetAttribute("TestMoon")
+			local phase = (IS_STUDIO and type(testMoon) == "string" and DayNight.phaseByKey(testMoon)) or DayNight.moonPhase(workspace:GetServerTimeNow())
+			local sky = Lighting:FindFirstChildOfClass("Sky")
+			if sky then
+				if phase.texture ~= "" then
+					sky.MoonTextureId = phase.texture
+					sky.MoonAngularSize = 24
+				else
+					sky.MoonAngularSize = 0
+				end
+			end
 			local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds")
 			if clouds and not storm then
 				clouds.Cover = 0.55 - 0.3 * d
