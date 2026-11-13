@@ -114,9 +114,12 @@ function Weather.start()
 			flash.Brightness = 0.3
 			TweenService:Create(flash, TweenInfo.new(0.4), { Brightness = 0 }):Play()
 		end)
+		-- sound by distance: close = loud sharp crack right away; far = later, quieter, deeper rumble
 		if thunderSound then
-			task.delay(math.random() * 1.2 + 0.4, function()
-				thunderSound.PlaybackSpeed = 0.85 + math.random() * 0.3
+			local delay = if close then 0.1 + math.random() * 0.3 else 1.5 + math.random() * 1.5
+			task.delay(delay, function()
+				thunderSound.Volume = if close then 1 else 0.35
+				thunderSound.PlaybackSpeed = if close then 0.95 + math.random() * 0.1 else 0.65 + math.random() * 0.1
 				thunderSound:Play()
 			end)
 		end

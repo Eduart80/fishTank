@@ -136,7 +136,7 @@ Config.DAY_NIGHT = { daySeconds = 20 * 60, nightSeconds = 5 * 60 }
 
 -- Storm sounds (client/Weather). Paste Roblox audio ids from the Studio Toolbox (Creator Store ->
 -- Audio, search "thunder" / "rain loop"). Empty = silent (rain + lightning still show).
-Config.THUNDER_SOUND_ID = ""
+Config.THUNDER_SOUND_ID = "rbxassetid://130457325001606" -- sudden close thunder crack (picked 2026-11-13)
 Config.RAIN_SOUND_ID = ""
 
 -- Fishing boat visitor (server/BoatService). Studio comes much more often so you can test it.
