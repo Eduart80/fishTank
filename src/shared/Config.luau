@@ -111,9 +111,9 @@ Config.SEAGULL_SOUND_ID = "rbxassetid://9118858002"
 -- does not mutate fish that grew up offline.
 Config.VARIANTS = {
 	storm = { name = "Stormborn", icon = "⚡", mult = 2, chance = 0.25, color = Color3.fromRGB(110, 200, 255) },
-	moon = { name = "Moonlit", icon = "🌙", mult = 1.5, chance = 0.3, color = Color3.fromRGB(215, 222, 255) }, -- FULL MOON nights only
+	moon = { name = "Moonlit", icon = "🌙", mult = 1.5, chance = 0.3, color = Color3.fromRGB(150, 175, 255) }, -- silver-blue moonlight -- FULL MOON nights only
 	-- Rare Egg only (Robux), never from weather (no chance field)
-	albino = { name = "Albino", icon = "⚪", mult = 2, color = Color3.fromRGB(250, 250, 255) },
+	albino = { name = "Albino", icon = "⚪", mult = 2, color = Color3.fromRGB(255, 215, 228) }, -- pinkish white, like real albino fish
 	golden = { name = "Golden", icon = "✨", mult = 3, color = Color3.fromRGB(255, 200, 60) },
 }
 -- Rare Egg (Robux developer product): a species the player has unlocked, always a rare variant.
