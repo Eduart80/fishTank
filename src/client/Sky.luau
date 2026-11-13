@@ -21,6 +21,7 @@ function Sky.start()
 	tint.Name = "NightTint"
 	tint.Parent = workspace.CurrentCamera
 
+	local shownPhase = nil
 	task.spawn(function()
 		while true do
 			local test = workspace:GetAttribute("TestClock")
@@ -41,8 +42,11 @@ function Sky.start()
 			-- moon) shows no moon at all, so a non-full night never shows the full moon by mistake.
 			local testMoon = workspace:GetAttribute("TestMoon")
 			local phase = (IS_STUDIO and type(testMoon) == "string" and DayNight.phaseByKey(testMoon)) or DayNight.moonPhase(workspace:GetServerTimeNow())
+			-- only touch the sky when the phase CHANGES (setting the texture every loop made Studio
+			-- reload it twice a second -> freezes)
 			local sky = Lighting:FindFirstChildOfClass("Sky")
-			if sky then
+			if sky and phase.key ~= shownPhase then
+				shownPhase = phase.key
 				if phase.texture ~= "" then
 					sky.MoonTextureId = phase.texture
 					sky.MoonAngularSize = 24
