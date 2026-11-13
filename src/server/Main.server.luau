@@ -366,6 +366,27 @@ Players.PlayerRemoving:Connect(function(player)
 	WorldService.release(player)
 end)
 
+-- Weather ------------------------------------------------------------------
+-- The "Storm at Sea" market event is a real storm: dark sky, rough sea, rain + thunder on clients,
+-- gulls fly off. Same schedule on every server (it comes from the event hash).
+-- STUDIO ONLY: Workspace attribute "TestStorm" (tick it in Properties while playing, Server side)
+-- forces the storm on/off without waiting for the event.
+local IS_STUDIO = game:GetService("RunService"):IsStudio()
+if IS_STUDIO then
+	workspace:SetAttribute("TestStorm", false)
+end
+local stormOn = false
+local function updateWeather(now: number)
+	local event = MarketService.currentEvent(now)
+	local storm = (event ~= nil and event.def.id == "storm") or (IS_STUDIO and workspace:GetAttribute("TestStorm") == true)
+	if storm == stormOn then
+		return
+	end
+	stormOn = storm
+	AmbienceService.setWeather(if storm then "storm" else "clear", if storm then 12 else 20)
+	notifyRemote:FireAllClients(if storm then "🌧 Storm at Sea! No boats today, but all fish sell for +40%!" else "🌤 The storm is over. The boats are heading back out!", 6)
+end
+
 -- Game tick ---------------------------------------------------------------
 while true do
 	task.wait(TICK)
@@ -373,6 +394,7 @@ while true do
 	local snapshot = MarketService.snapshot(now)
 	marketRemote:FireAllClients(snapshot)
 	WorldService.updateBoard(snapshot)
+	updateWeather(now)
 	for _, player in Players:GetPlayers() do
 		local data = DataService.get(player)
 		if data then

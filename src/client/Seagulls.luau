@@ -88,16 +88,22 @@ function Seagulls.start()
 		table.insert(gulls, createGull(folder, rng))
 	end
 
+	-- storm: gulls climb and spread far out (away = 0 normal .. 1 gone), come back after
+	local away = if workspace:GetAttribute("Weather") == "storm" then 1 else 0
+
 	local parts, cframes = {}, {}
 	RunService.RenderStepped:Connect(function(dt)
 		local t = os.clock()
+		local goal = if workspace:GetAttribute("Weather") == "storm" then 1 else 0
+		away += math.clamp(goal - away, -dt / 12, dt / 12) -- ~12 s to leave / return
 		table.clear(parts)
 		table.clear(cframes)
 
 		for _, g in gulls do
 			g.angle += g.speed * dt
 			local a = g.angle
-			local pos = g.center + Vector3.new(math.cos(a) * g.radius, g.height + math.sin(t * 0.3 + g.phase) * 4, math.sin(a) * g.radius)
+			local r = g.radius * (1 + away * 5)
+			local pos = g.center + Vector3.new(math.cos(a) * r, g.height + away * 180 + math.sin(t * 0.3 + g.phase) * 4, math.sin(a) * r)
 			local dir = Vector3.new(-math.sin(a), 0, math.cos(a)) * math.sign(g.speed)
 			local bank = -math.sign(g.speed) * 0.35
 			local body = CFrame.lookAt(pos, pos + dir) * CFrame.Angles(0, 0, bank)
@@ -126,7 +132,7 @@ function Seagulls.start()
 			table.insert(parts, g.tipR)
 			table.insert(cframes, wingR * CFrame.new(WING_LEN / 2 + 0.5, 0, 0.1))
 
-			if g.sound and t >= g.nextSquawk then
+			if g.sound and away < 0.3 and t >= g.nextSquawk then
 				g.nextSquawk = t + rng:NextNumber(8, 25)
 				g.sound.PlaybackSpeed = rng:NextNumber(0.9, 1.15) -- each squawk sounds a bit different
 				g.sound:Play()

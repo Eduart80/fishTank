@@ -1,7 +1,7 @@
 -- Client UI. Shows what the server sends and asks the server to act. It never decides anything.
 -- v1 is UI-only (no 3D tank yet) so we can test whether the market loop is fun.
 
-print("[FishMarket] client build 2026-11-12b streak + invite + reef ferry") -- proves Studio runs the synced script
+print("[FishMarket] client build 2026-11-12c weather") -- proves Studio runs the synced script
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -892,6 +892,7 @@ end)
 require(script.Parent:WaitForChild("FishRenderer")).start()
 require(script.Parent:WaitForChild("Seagulls")).start()
 require(script.Parent:WaitForChild("FerryCard")).start()
+require(script.Parent:WaitForChild("Weather")).start()
 require(script.Parent:WaitForChild("BoatRenderer")).start()
 require(script.Parent:WaitForChild("Bubbles")).start()
 

@@ -104,6 +104,11 @@ Config.RESCUE_COINS = 20
 -- Empty = silent gulls.
 Config.SEAGULL_SOUND_ID = "rbxassetid://9118858002"
 
+-- Storm sounds (client/Weather). Paste Roblox audio ids from the Studio Toolbox (Creator Store ->
+-- Audio, search "thunder" / "rain loop"). Empty = silent (rain + lightning still show).
+Config.THUNDER_SOUND_ID = ""
+Config.RAIN_SOUND_ID = ""
+
 -- Fishing boat visitor (server/BoatService). Studio comes much more often so you can test it.
 Config.BOAT = {
 	intervalMin = if RunService:IsStudio() then 45 else 15 * 60, -- real seconds between visits
