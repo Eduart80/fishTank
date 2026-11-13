@@ -602,7 +602,7 @@ local function renderTank()
 			row.barFill.Size = UDim2.new((age - 1) / Config.EXTRA_GROWTH_PERIODS, 0, 1, 0)
 			local price = market and species and market.prices[fish.species]
 			if price then
-				row.info.Text = ("Size %.2fx  ~%s"):format(size, fmt(price * size * Config.variantMult(fish) * (1 - Config.MARKET_FEE)))
+				row.info.Text = ("Size %.2fx · sells ~%s"):format(size, fmt(price * size * Config.variantMult(fish) * (1 - Config.MARKET_FEE)))
 			else
 				row.info.Text = ("Size %.2fx"):format(size)
 			end
