@@ -38,6 +38,7 @@ end
 function DataService.defaultData(now: number)
 	return {
 		version = 1,
+		created = now, -- first join (invite rewards only go to brand-new players)
 		coins = Config.STARTING_COINS,
 		slots = Config.STARTING_SLOTS,
 		fedUntil = now + Config.real(Config.STARTING_FEED_HOURS * 3600),

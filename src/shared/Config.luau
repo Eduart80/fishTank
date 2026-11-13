@@ -70,6 +70,32 @@ end
 -- Back after this many (real) seconds = "Welcome back" summary.
 Config.AWAY_SUMMARY_SECONDS = if RunService:IsStudio() then 60 else 5 * 60
 
+-- Daily login streak (RewardsService). A "day" = UTC day on live servers; Studio uses 2-minute
+-- days so a streak can be tested by stopping and starting again. Rewards loop after the last entry.
+-- An egg that does not fit in the tank is paid out as its egg price in coins.
+Config.DAY_SECONDS = if RunService:IsStudio() then 120 else 86400
+Config.DAILY_REWARDS = {
+	{ coins = 25 },
+	{ egg = "guppy", coins = 20 },
+	{ coins = 50 },
+	{ egg = "clownfish" },
+	{ coins = 100 },
+	{ coins = 150 },
+	{ egg = "salmon", coins = 100 }, -- day 7: a taste of the next fish even before it unlocks
+}
+
+-- Invite a friend: a brand-new player who joins through someone's invite / share link gets a gift;
+-- the inviter gets coins if they are on the same server (capped per lifetime against alt farming).
+Config.INVITE = {
+	newPlayerGift = { egg = "clownfish", coins = 50 },
+	inviterCoins = 150,
+	maxRewards = 10,
+}
+
+-- World 2 (Coral Reef) unlock rule — draft, see docs/roadmap.md "Round 2 plan". Shown on the
+-- Reef Ferry preview card. Not enforced yet (World 2 is not built).
+Config.REEF_UNLOCK = { slots = 20, ticket = 50000 }
+
 -- If a player has no fish and can't afford the cheapest egg, top them up to this (no permanent soft-lock).
 -- Must stay >= guppy egg price at max demand (10 * EGG_MAX_MULT 2 = 20).
 Config.RESCUE_COINS = 20

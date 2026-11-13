@@ -60,8 +60,38 @@ end
 
 AnalyticsTracker._stepReached = stepReached -- for the Studio test runner
 
+-- "How far do players get?" beyond onboarding: each milestone is logged ONCE per player as a
+-- custom event (Creator Dashboard -> Analytics -> Custom: event count = players who got there).
+local function milestones(data)
+	local list = {}
+	for _, species in Config.Species do
+		if (species.unlockEarned or 0) > 0 and data.stats.earned >= species.unlockEarned then
+			table.insert(list, "Unlocked_" .. species.name)
+		end
+	end
+	local stage = Config.tankStage(data.slots)
+	for i = 2, stage do
+		table.insert(list, "Tank_" .. Config.TANK_STAGES[i].name:gsub(" ", ""))
+	end
+	for _, coins in { 1000, 10000, 100000 } do
+		if data.stats.earned >= coins then
+			table.insert(list, "Earned_" .. coins)
+		end
+	end
+	return list
+end
+
+AnalyticsTracker._milestones = milestones -- for the Studio test runner
+
 -- Call after anything that may change progress (cheap; logs only new steps).
 function AnalyticsTracker.check(player: Player, data)
+	data.milestones = data.milestones or {}
+	for _, name in milestones(data) do
+		if not data.milestones[name] then
+			data.milestones[name] = true
+			safe(AnalyticsService.LogCustomEvent, AnalyticsService, player, name, 1)
+		end
+	end
 	local target = stepReached(data)
 	local done = data.onboard or 0
 	if target <= done then

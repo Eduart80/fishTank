@@ -1,7 +1,7 @@
 -- Client UI. Shows what the server sends and asks the server to act. It never decides anything.
 -- v1 is UI-only (no 3D tank yet) so we can test whether the market loop is fun.
 
-print("[FishMarket] client build 2026-11-12 shop-scroll + glass panels") -- proves Studio runs the synced script
+print("[FishMarket] client build 2026-11-12b streak + invite + reef ferry") -- proves Studio runs the synced script
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -141,12 +141,28 @@ local coinsLabel = make("TextLabel", {
 	Parent = coinsBox,
 })
 
+-- Daily streak badge under the coins pill (hidden until the first daily reward)
+local streakLabel = make("TextLabel", {
+	BackgroundColor3 = Color3.new(0, 0, 0),
+	BackgroundTransparency = 0.3,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -12, 0, 62),
+	Size = UDim2.new(0, 0, 0, 28),
+	AutomaticSize = Enum.AutomaticSize.X,
+	Font = FONT_BOLD,
+	TextSize = 16,
+	TextColor3 = Color3.fromRGB(255, 190, 90),
+	Text = "",
+	Visible = false,
+	Parent = topGui,
+}, { make("UICorner", { CornerRadius = UDim.new(1, 0) }), make("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }) })
+
 -- Food status lives on each tank's front glass (see renderFoodGauges); feed at the tank with F.
 
 -- Market / My Tank: round icon buttons, middle of the left side
 -- One column holds all icons, so a single UIScale shrinks buttons AND the gaps between them.
 local ICON_GAP = 14
-local iconColumn = make("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), Size = UDim2.new(0, 68, 0, 3 * 86 + 2 * ICON_GAP), Parent = gui }, {
+local iconColumn = make("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), Size = UDim2.new(0, 68, 0, 4 * 86 + 3 * ICON_GAP), Parent = gui }, {
 	make("UIListLayout", { Padding = UDim.new(0, ICON_GAP), SortOrder = Enum.SortOrder.LayoutOrder }),
 })
 local iconColumnScale = make("UIScale", { Parent = iconColumn })
@@ -171,6 +187,22 @@ local marketToggle = iconButton("🛒", "Market", -100)
 local tankToggle = iconButton("🐟", "My Tank", 0)
 local shopToggle = iconButton("R$", "Shop", 100)
 shopToggle.BackgroundColor3 = Color3.fromRGB(40, 160, 90)
+-- Invite: Roblox friend-invite prompt. The inviter id goes into LaunchData (server also reads
+-- ReferredByPlayerId); a brand-new friend who joins gets a gift, the inviter gets coins.
+local inviteToggle = iconButton("👥", "Invite", 200)
+inviteToggle.BackgroundColor3 = Color3.fromRGB(230, 140, 40)
+inviteToggle.Activated:Connect(function()
+	local SocialService = game:GetService("SocialService")
+	local okCan, canInvite = pcall(SocialService.CanSendGameInviteAsync, SocialService, player)
+	if not okCan or not canInvite then
+		return
+	end
+	local options = Instance.new("ExperienceInviteOptions")
+	options.PromptMessage = ("Invite friends: they get %d coins + a free %s egg, you get %d coins!"):format(
+		Config.INVITE.newPlayerGift.coins or 0, Config.ById[Config.INVITE.newPlayerGift.egg].name, Config.INVITE.inviterCoins)
+	options.LaunchData = tostring(player.UserId)
+	pcall(SocialService.PromptGameInvite, SocialService, player, options)
+end)
 
 
 -- x / leftOffset: the market panel starts right of the icon buttons
@@ -519,6 +551,8 @@ local function renderTank()
 	end
 	local now = serverNow()
 	coinsLabel.Text = fmt(tank.coins)
+	streakLabel.Visible = (tank.streak or 0) > 0
+	streakLabel.Text = ("🔥 Day %d streak"):format(tank.streak or 0)
 
 
 	tankTitle.Text = ("%s %d/%d"):format(Config.TANK_STAGES[Config.tankStage(tank.slots)].name, #tank.fish, tank.slots)
@@ -857,6 +891,7 @@ end)
 
 require(script.Parent:WaitForChild("FishRenderer")).start()
 require(script.Parent:WaitForChild("Seagulls")).start()
+require(script.Parent:WaitForChild("FerryCard")).start()
 require(script.Parent:WaitForChild("BoatRenderer")).start()
 require(script.Parent:WaitForChild("Bubbles")).start()
 

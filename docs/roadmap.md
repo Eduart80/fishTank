@@ -103,6 +103,23 @@ joined → bought first egg → first fish grew → first sale → first unlock 
 
 Benchmarks are rough; Creator Dashboard shows real D1/D7 + session length once live.
 
+## Round 2 plan — Coral Reef (draft 2026-11-12, NOT built)
+
+Problem: Koi takes 20 h, so top players turn into "check once a day" players and drift away.
+Round 2 must add things to DO, not longer timers.
+
+| Decision | Draft |
+|---|---|
+| Harbor tank | **Stays active.** Reef = a SECOND tank; fast Reef fish to manage while the Koi grows |
+| Timers | Restart the fast→slow ladder: Seahorse ~30 min ... Manta Ray boss ~24 h, higher coin values |
+| New skill | Tank-mates: Octopus eats Lobster, etc. (see creatures.md World 2). Heater + Reinforced Lid decor |
+| Unlock | Sea Pen + sell a full-size Koi + 50,000-coin boat ticket (coin sink) → "Travel to Reef" boat at main pier, unlocked forever |
+| Build as | Second place in the same experience (TeleportService), same DataStore; own map, own market board |
+| Teaser now | "Coral Reef — coming soon. Sell a Koi to unlock!" sign at the pier (cheap) |
+| **Start building when** | First playtester hits `Unlocked_Tuna` (custom event on the Creator Dashboard) — Koi is ~1-2 weeks after Publish |
+
+Open questions: does the Reef have its own market or share prices with the Harbor? Same 8-player servers?
+
 ## World stages (long term)
 
 | World | Boss | Twist |

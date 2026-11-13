@@ -15,6 +15,8 @@ local BoatService = require(Services.BoatService)
 local ShopService = require(Services.ShopService)
 local AmbienceService = require(Services.AmbienceService)
 local PatioService = require(Services.PatioService)
+local RewardsService = require(Services.RewardsService)
+local FerryService = require(Services.FerryService)
 
 local TICK = 5
 local ACTION_COOLDOWN = 0.15
@@ -35,12 +37,24 @@ marketRemote.Parent = remotes
 local notifyRemote = Instance.new("RemoteEvent")
 notifyRemote.Name = "Notify"
 notifyRemote.Parent = remotes
+local ferryRemote = Instance.new("RemoteEvent")
+ferryRemote.Name = "Ferry"
+ferryRemote.Parent = remotes
 remotes.Parent = ReplicatedStorage
 
 MarketService.start()
 DataService.start()
 WorldService.start()
 AmbienceService.start()
+FerryService.start(workspace:WaitForChild("FishWorld"), {
+	remote = ferryRemote,
+	getData = function(player)
+		return DataService.get(player)
+	end,
+	notify = function(player, text)
+		notifyRemote:FireClient(player, text)
+	end,
+})
 
 -- Helpers ------------------------------------------------------------------
 local function updateLeaderstats(player: Player, data)
@@ -56,6 +70,7 @@ local function pushState(player: Player, data, now: number)
 	local state = TankService.publicState(data, now)
 	local patio = PatioService.publicState(data)
 	state.inventory, state.patio = patio.inventory, patio.patio
+	state.streak = if data.daily then data.daily.streak else 0
 	stateRemote:FireClient(player, state)
 	WorldService.updateFeedPrompt(player, state)
 	WorldService.updateTankStage(player, data.slots)
@@ -244,6 +259,38 @@ ShopService.start({
 	end,
 })
 
+-- Invite a friend ------------------------------------------------------------
+-- Roblox fills ReferredByPlayerId when someone joins through an invite or share link; the client
+-- invite prompt also puts the inviter id into LaunchData as a fallback.
+local function handleInvite(player: Player, data, now: number): string?
+	if not RewardsService.isNewPlayer(data, now) or data.invitedBy then
+		return nil
+	end
+	local ok, joinData = pcall(function()
+		return player:GetJoinData()
+	end)
+	if not ok or type(joinData) ~= "table" then
+		return nil
+	end
+	local inviterId = tonumber(joinData.ReferredByPlayerId)
+	if not inviterId or inviterId == 0 then
+		inviterId = tonumber(joinData.LaunchData)
+	end
+	if not inviterId or inviterId == 0 or inviterId == player.UserId then
+		return nil
+	end
+	local inviter = Players:GetPlayerByUserId(inviterId)
+	local inviterData = inviter and DataService.get(inviter)
+	local inviterName = if inviter then inviter.DisplayName else "A friend"
+	local inviteeText, inviterText = RewardsService.applyInvite(data, inviterData, inviterName, player.DisplayName, now)
+	AnalyticsTracker.custom(player, "JoinedFromInvite", 1)
+	if inviter and inviterData and inviterText then
+		notifyRemote:FireClient(inviter, inviterText, 7)
+		pushState(inviter, inviterData, now)
+	end
+	return inviteeText
+end
+
 -- Player lifecycle --------------------------------------------------------
 local function onPlayerAdded(player: Player)
 	local data = DataService.load(player)
@@ -274,11 +321,31 @@ local function onPlayerAdded(player: Player)
 	settleAndNotify(player, data, now)
 	pushState(player, data, now)
 	marketRemote:FireClient(player, MarketService.snapshot(now))
+	-- join messages, one after another (a toast replaces the previous one)
+	local messages = {}
 	local summary = TankService.awaySummary(data, now, away)
 	if summary then
-		task.delay(3, function() -- after the loading screen
-			if player.Parent then
-				notifyRemote:FireClient(player, summary, 9)
+		table.insert(messages, summary)
+	end
+	local inviteText = handleInvite(player, data, now)
+	if inviteText then
+		table.insert(messages, inviteText)
+	end
+	local dailyText = RewardsService.claimDaily(data, now)
+	if dailyText then
+		table.insert(messages, dailyText)
+		AnalyticsTracker.custom(player, "DailyStreak", data.daily.streak)
+	end
+	if #messages > 0 then
+		pushState(player, data, now)
+		task.spawn(function()
+			task.wait(3) -- after the loading screen
+			for _, text in messages do
+				if not player.Parent then
+					return
+				end
+				notifyRemote:FireClient(player, text, 7)
+				task.wait(7.5)
 			end
 		end)
 	end
@@ -310,6 +377,14 @@ while true do
 		local data = DataService.get(player)
 		if data then
 			settleAndNotify(player, data, now)
+			-- new day while playing (only after the join flow has claimed once)
+			if data.daily and data.daily.day ~= RewardsService.dayOf(now) then
+				local dailyText = RewardsService.claimDaily(data, now)
+				if dailyText then
+					notifyRemote:FireClient(player, dailyText, 7)
+					AnalyticsTracker.custom(player, "DailyStreak", data.daily.streak)
+				end
+			end
 			pushState(player, data, now)
 		end
 	end

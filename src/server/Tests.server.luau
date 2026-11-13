@@ -20,6 +20,7 @@ local TankService = require(Services.TankService)
 local AnalyticsTracker = require(Services.AnalyticsTracker)
 local PatioService = require(Services.PatioService)
 local PatioModels = require(Services.PatioModels)
+local RewardsService = require(Services.RewardsService)
 
 -- wait until Main has started the market (WorldService starts right after it)
 workspace:WaitForChild("FishWorld", 30)
@@ -272,6 +273,64 @@ test("Short break: no welcome-back text", function(check)
 	local away = TankService.beginReturn(d, back)
 	TankService.settle(d, back)
 	check(TankService.awaySummary(d, back, away) == nil, "summary after a short break")
+end)
+
+-- Daily streak + invite ----------------------------------------------------
+test("Daily: once per day, streak grows on consecutive days, resets after a missed day", function(check)
+	local d = newPlayer(now)
+	local DAY = Config.DAY_SECONDS
+	local t = (now // DAY) * DAY + 1
+	local c0 = d.coins
+	check(RewardsService.claimDaily(d, t) ~= nil and d.daily.streak == 1, "day 1 not given")
+	check(d.coins == c0 + Config.DAILY_REWARDS[1].coins, "day 1 coins")
+	check(RewardsService.claimDaily(d, t + 10) == nil, "claimed twice in a day")
+	RewardsService.claimDaily(d, t + DAY)
+	check(d.daily.streak == 2 and #d.fish == 1, "day 2: streak/egg wrong")
+	RewardsService.claimDaily(d, t + 3 * DAY) -- skipped a day
+	check(d.daily.streak == 1, "streak not reset")
+end)
+
+test("Daily: egg reward with a full tank pays the egg price in coins; rewards loop after the last day", function(check)
+	local d = newPlayer(now)
+	for _ = 1, d.slots do
+		addFish(d, "guppy", 0, now)
+	end
+	local DAY = Config.DAY_SECONDS
+	local t = (now // DAY) * DAY + 1
+	d.daily = { day = RewardsService.dayOf(t) - 1, streak = 1 } -- next claim = day 2 (guppy egg + 20)
+	local c0 = d.coins
+	RewardsService.claimDaily(d, t)
+	check(d.coins == c0 + 20 + Config.ById.guppy.eggPrice and #d.fish == d.slots, "full tank egg not paid as coins")
+	d.daily = { day = RewardsService.dayOf(t), streak = #Config.DAILY_REWARDS }
+	local c1 = d.coins
+	RewardsService.claimDaily(d, t + DAY)
+	check(d.coins == c1 + Config.DAILY_REWARDS[1].coins, "did not loop back to day 1 reward")
+end)
+
+test("Invite: gift once for the new player, inviter coins capped", function(check)
+	local newbie, inviter = newPlayer(now), newPlayer(now)
+	check(RewardsService.isNewPlayer(newbie, now), "fresh save not new")
+	local a, b = RewardsService.applyInvite(newbie, inviter, "Ann", "Bob", now)
+	check(a ~= nil and b ~= nil and #newbie.fish == 1 and inviter.coins == Config.STARTING_COINS + Config.INVITE.inviterCoins, "rewards wrong")
+	check(RewardsService.applyInvite(newbie, inviter, "Ann", "Bob", now) == nil, "gift given twice")
+	inviter.inviteRewards = Config.INVITE.maxRewards
+	local _, capped = RewardsService.applyInvite(newPlayer(now), inviter, "Ann", "Cy", now)
+	check(capped == nil, "inviter cap ignored")
+	local old = newPlayer(now)
+	old.created = nil
+	check(not RewardsService.isNewPlayer(old, now), "old save counted as new")
+end)
+
+test("Analytics milestones: species unlocks, tank stages, earned", function(check)
+	local d = newPlayer(now)
+	check(#AnalyticsTracker._milestones(d) == 0, "fresh player has milestones")
+	d.stats.earned = 30000
+	d.slots = 20
+	local set = {}
+	for _, name in AnalyticsTracker._milestones(d) do
+		set[name] = true
+	end
+	check(set.Unlocked_Koi and set.Unlocked_Clownfish and set.Tank_SeaPen and set.Tank_MediumTank and set.Earned_10000 and not set.Earned_100000, "missing/extra milestones")
 end)
 
 -- First-session fast growth -------------------------------------------------
