@@ -132,6 +132,8 @@ function AmbienceService.setMoon(phase)
 	else
 		sky.MoonAngularSize = 0 -- new moon, or a phase picture not uploaded yet
 	end
+	-- New Moon = starry night: as many stars as Roblox allows (shooting stars: client/Sky)
+	sky.StarCount = if phase.key == "new" then 5000 else 3000
 	print(("[Moon] %s -> size %d"):format(phase.key, sky.MoonAngularSize))
 end
 
