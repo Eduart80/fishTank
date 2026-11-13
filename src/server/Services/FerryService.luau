@@ -18,7 +18,7 @@ local SAIL_DISTANCE = 220
 local SAIL_SECONDS = 14
 local FADE_AT = 10.5 -- clients start fading to black here (1 s fade)
 local BOARD_SECONDS = 6
-local RETURN_SPOT = Vector3.new(-6, DECK_TOP + 3, 176) -- on the pier platform
+local RETURN_SPOT = Vector3.new(-3, DECK_TOP + 3, 169) -- on the pier platform, in front of the sign
 
 -- front of the ferry (local -Z) points out to sea (+Z)
 local dockCF = CFrame.lookAt(DOCK_POS, DOCK_POS + Vector3.new(0, 0, 1))
@@ -122,9 +122,12 @@ local function buildSign(parent: Instance)
 		p.Parent = sign
 		return p
 	end
-	local x, z = -8, 166
-	for _, dx in { -3.2, 3.2 } do
-		add("Post", Vector3.new(0.6, 7, 0.6), CFrame.new(x + dx, DECK_TOP + 3.5, z), Color3.fromRGB(80, 56, 36), Enum.Material.Wood)
+	-- front-right corner of the pier platform (ferry side), where the walkway arrives; the crates
+	-- (x -9, z 166) end up BEHIND it. Board spans x -12.7..-5.3, walkway is x -4..4.
+	local x, z = -9, 162.6
+	-- thin posts just OUTSIDE the board edges, so they never cover the text on either side
+	for _, dx in { -3.9, 3.9 } do
+		add("Post", Vector3.new(0.3, 7.2, 0.3), CFrame.new(x + dx, DECK_TOP + 3.6, z), Color3.fromRGB(80, 56, 36), Enum.Material.Wood)
 	end
 	-- front face (-Z) looks back toward the plaza
 	local board = add("Board", Vector3.new(7.4, 4.2, 0.4), CFrame.lookAt(Vector3.new(x, DECK_TOP + 5, z), Vector3.new(x, DECK_TOP + 5, z - 10)), Color3.fromRGB(0, 110, 120))
