@@ -146,11 +146,14 @@ local function buildShape(index: number, cf: CFrame, model: Instance, stageIndex
 
 	trapezoid("Stand", shape, cf, hf + 1, hb + 1, zF - 1, zB + 1, STAND_H / 2, STAND_H, { Material = Enum.Material.WoodPlanks, Color = COLORS.wood })
 	trapezoid("Sand", shape, cf, hf, hb, zF, zB, STAND_H + 0.5, 1, { Material = Enum.Material.Sand, Color = COLORS.sand })
+	-- Water = a thin SURFACE at the top, not a full block: the see-through block showed its own walls
+	-- just inside the glass ("a second glass") and the seams between its 3 pieces on big tanks.
+	-- (Fish bounds come from the Tank* attributes, not from this part.)
 	local waterH = H - 1
-	trapezoid("Water", shape, cf, hf, hb, zF, zB, STAND_H + 1 + waterH / 2, waterH, {
+	trapezoid("Water", shape, cf, hf, hb, zF, zB, STAND_H + 1 + waterH - 0.15, 0.3, {
 		Material = Enum.Material.SmoothPlastic,
 		Color = COLORS.water,
-		Transparency = 0.75,
+		Transparency = 0.55,
 		CanCollide = false,
 		CanQuery = false,
 		CanTouch = false,
