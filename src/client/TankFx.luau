@@ -137,6 +137,44 @@ local function moonbeam(top: Vector3, tint: Color3?)
 	sparkles(top, color, 30, 3)
 end
 
+local function playSound(id: string, volume: number)
+	if id == "" then
+		return
+	end
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.Volume = volume
+	s.Parent = SoundService
+	s:Play()
+	Debris:AddItem(s, 15)
+end
+
+-- Fireworks: a few rockets shoot up from around the tank and burst into coloured sparks.
+local function fireworks(top: Vector3)
+	local colors = { Color3.fromRGB(255, 80, 80), Color3.fromRGB(255, 210, 70), Color3.fromRGB(90, 200, 255), Color3.fromRGB(150, 255, 120), Color3.fromRGB(230, 120, 255) }
+	local rng = Random.new()
+	for i = 1, 5 do
+		task.delay((i - 1) * 0.35, function()
+			local start = top + Vector3.new(rng:NextNumber(-8, 8), 0, rng:NextNumber(-8, 8))
+			local burstAt = start + Vector3.new(rng:NextNumber(-6, 6), rng:NextNumber(28, 40), rng:NextNumber(-6, 6))
+			local color = colors[rng:NextInteger(1, #colors)]
+			local rocket = neon(Vector3.new(0.5, 0.5, 0.5), CFrame.new(start), color)
+			local tween = TweenService:Create(rocket, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = CFrame.new(burstAt) })
+			tween:Play()
+			tween.Completed:Connect(function()
+				rocket:Destroy()
+				sparkles(burstAt, color, 70, 3)
+				local glow = neon(Vector3.new(1, 1, 1), CFrame.new(burstAt), color, 1)
+				local light = Instance.new("PointLight")
+				light.Color, light.Range, light.Brightness = color, 50, 6
+				light.Parent = glow
+				TweenService:Create(light, TweenInfo.new(1), { Brightness = 0 }):Play()
+				Debris:AddItem(glow, 1.2)
+			end)
+		end)
+	end
+end
+
 function TankFx.start()
 	ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fx").OnClientEvent:Connect(function(kind, top)
 		if typeof(top) ~= "Vector3" then
@@ -150,6 +188,12 @@ function TankFx.start()
 			moonbeam(top, Color3.fromRGB(230, 50, 60))
 		elseif kind == "rare" then
 			sparkles(top, Color3.fromRGB(255, 205, 70), 60, 3)
+		elseif kind == "fireworks" then
+			fireworks(top) -- everyone sees them (Harbor Master)
+		elseif kind == "unlockSound" then
+			playSound(Config.UNLOCK_SOUND_ID, 0.8) -- only sent to the player who unlocked
+		elseif kind == "harborSound" then
+			playSound(Config.HARBOR_MASTER_SOUND_ID, 1)
 		end
 	end)
 end

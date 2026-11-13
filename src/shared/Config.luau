@@ -162,6 +162,9 @@ Config.MOON_PHASES = {
 -- Audio, search "thunder" / "rain loop"). Empty = silent (rain + lightning still show).
 Config.THUNDER_SOUND_ID = "rbxassetid://130457325001606" -- sudden close thunder crack (picked 2026-11-13)
 Config.THUNDER_FAR_SOUND_ID = "rbxassetid://102164464566453" -- distant rumble, for bolts on the horizon
+-- Celebrations (client/TankFx): only the player who reached the milestone hears it.
+Config.UNLOCK_SOUND_ID = "rbxassetid://100559751053348" -- firework (new fish unlocked)
+Config.HARBOR_MASTER_SOUND_ID = "rbxassetid://100559751053348" -- firework (+ fireworks over the tank)
 Config.RAIN_SOUND_ID = "rbxassetid://1516791621" -- rain loop (picked 2026-11-13)
 
 -- Fishing boat visitor (server/BoatService). Studio comes much more often so you can test it.

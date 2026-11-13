@@ -125,6 +125,8 @@ function DevPanel.start()
 		{ text = "⚡", attr = "TestFx", value = "storm" },
 		{ text = "🌙", attr = "TestFx", value = "moon" },
 		{ text = "✨", attr = "TestFx", value = "rare" },
+		{ text = "🎆", attr = "TestFx", value = "fireworks" },
+		{ text = "🔊", attr = "TestFx", value = "harborSound" },
 	})
 	row("Passes", { { text = "All 4", attr = "TestPasses", value = true }, { text = "None", attr = "TestPasses", value = false } })
 	row("Top 100", { { text = "Sample", attr = "TestTop", value = true }, { text = "Real", attr = "TestTop", value = false } })

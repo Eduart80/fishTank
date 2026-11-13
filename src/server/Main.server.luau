@@ -99,6 +99,7 @@ local function celebrate(player: Player, data)
 		task.delay(AFTER_SALE, function()
 			if player.Parent then
 				notifyRemote:FireClient(player, ("🎉 NEW FISH UNLOCKED: %s! Buy its egg in the Market."):format(species.name), 7)
+				fxRemote:FireClient(player, "unlockSound", Vector3.zero)
 			end
 		end)
 		others(("🎉 %s unlocked the %s!"):format(player.DisplayName, species.name))
@@ -116,6 +117,11 @@ local function celebrate(player: Player, data)
 				return
 			end
 			notifyRemote:FireClient(player, "⚓ You are a HARBOR MASTER! You have the Koi and the Sea Pen. The Coral Reef is next: take the Reef Ferry at the main pier for a preview!", 10)
+			fxRemote:FireClient(player, "harborSound", Vector3.zero)
+			local tankTop = WorldService.tankTop(player)
+			if tankTop then
+				fxRemote:FireAllClients("fireworks", tankTop)
+			end
 			others(("⚓ %s is now a HARBOR MASTER!"):format(player.DisplayName))
 		end)
 		AnalyticsTracker.custom(player, "HarborMaster", 1)
